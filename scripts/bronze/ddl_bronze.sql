@@ -14,7 +14,9 @@ Script Purpose:
 ===============================================================================
 */
 
--- Ensure Warehouse Schemas Exist
+-- Ensure Warehouse Schemas and Extensions Exist
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE SCHEMA IF NOT EXISTS bronze;
 CREATE SCHEMA IF NOT EXISTS silver;
 CREATE SCHEMA IF NOT EXISTS gold;
@@ -36,7 +38,6 @@ DROP TABLE IF EXISTS bronze.package CASCADE;
 DROP TABLE IF EXISTS bronze.place_activity CASCADE;
 DROP TABLE IF EXISTS bronze.activity CASCADE;
 DROP TABLE IF EXISTS bronze.place CASCADE;
-DROP TABLE IF EXISTS bronze.city CASCADE;
 DROP TABLE IF EXISTS bronze.vehicle CASCADE;
 DROP TABLE IF EXISTS bronze.vehicle_category CASCADE;
 DROP TABLE IF EXISTS bronze."user" CASCADE;
@@ -113,18 +114,14 @@ CREATE TABLE bronze.vehicle (
 -- =========================================================
 -- Bronze: Places & Activities
 -- =========================================================
-CREATE TABLE bronze.city (
-    id           INTEGER,
-    name         VARCHAR(100),
-    created_at   TIMESTAMPTZ,
-    _ingested_at TIMESTAMPTZ DEFAULT clock_timestamp()
-);
-
 CREATE TABLE bronze.place (
     place_id     INTEGER,
     place_name   VARCHAR(100),
     image_url    VARCHAR(255),
     description  TEXT,
+    latitude     NUMERIC(10, 7),
+    longitude    NUMERIC(10, 7),
+    geom         GEOMETRY(Point, 4326),
     _ingested_at TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
@@ -152,6 +149,7 @@ CREATE TABLE bronze.package (
     type                VARCHAR(50),
     days                VARCHAR(50),
     description         TEXT,
+    weather             JSON,
     image_url           VARCHAR(255),
     availability_status VARCHAR(50),
     _ingested_at        TIMESTAMPTZ DEFAULT clock_timestamp()
@@ -217,7 +215,6 @@ CREATE TABLE bronze.booking_package (
 CREATE TABLE bronze.payment (
     payment_id     INTEGER,
     booking_id     INTEGER,
-    installment    VARCHAR(50),
     amount         NUMERIC(10,2),
     payment_method VARCHAR(50),
     received_date  DATE,

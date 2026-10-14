@@ -13,6 +13,9 @@ Script Purpose:
 ===============================================================================
 */
 
+-- Ensure Warehouse Schemas and Extensions Exist
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE SCHEMA IF NOT EXISTS silver;
 
 -- =========================================================
@@ -32,7 +35,6 @@ DROP TABLE IF EXISTS silver.package CASCADE;
 DROP TABLE IF EXISTS silver.place_activity CASCADE;
 DROP TABLE IF EXISTS silver.activity CASCADE;
 DROP TABLE IF EXISTS silver.place CASCADE;
-DROP TABLE IF EXISTS silver.city CASCADE;
 DROP TABLE IF EXISTS silver.vehicle CASCADE;
 DROP TABLE IF EXISTS silver.vehicle_category CASCADE;
 DROP TABLE IF EXISTS silver."user" CASCADE;
@@ -114,20 +116,20 @@ CREATE TABLE silver.vehicle (
 -- =========================================================
 -- Silver: Places & Activities
 -- =========================================================
-CREATE TABLE silver.city (
-    id           INTEGER PRIMARY KEY,
-    name         VARCHAR(100) NOT NULL UNIQUE,
-    created_at   TIMESTAMPTZ,
-    _loaded_at   TIMESTAMPTZ DEFAULT clock_timestamp()
-);
-
 CREATE TABLE silver.place (
     place_id     INTEGER PRIMARY KEY,
     place_name   VARCHAR(100) NOT NULL,
     image_url    VARCHAR(255),
     description  TEXT,
+    latitude     NUMERIC(10, 7),
+    longitude    NUMERIC(10, 7),
+    geom         GEOMETRY(Point, 4326),
     _loaded_at   TIMESTAMPTZ DEFAULT clock_timestamp()
 );
+
+-- Spatial index for high-performance GIS analytics
+DROP INDEX IF EXISTS silver.idx_silver_place_geom CASCADE;
+CREATE INDEX idx_silver_place_geom ON silver.place USING GIST (geom);
 
 CREATE TABLE silver.activity (
     activity_id   INTEGER PRIMARY KEY,
@@ -154,6 +156,7 @@ CREATE TABLE silver.package (
     type                VARCHAR(50) NOT NULL,
     days                VARCHAR(50) NOT NULL,
     description         TEXT,
+    weather             JSON,
     image_url           VARCHAR(255),
     availability_status VARCHAR(50) NOT NULL DEFAULT 'AVAILABLE',
     is_available        BOOLEAN NOT NULL DEFAULT TRUE,
@@ -226,7 +229,6 @@ CREATE TABLE silver.booking_package (
 CREATE TABLE silver.payment (
     payment_id     INTEGER PRIMARY KEY,
     booking_id     INTEGER NOT NULL REFERENCES silver.booking(booking_id),
-    installment    VARCHAR(50) NOT NULL,
     amount         NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     payment_method VARCHAR(50) NOT NULL,
     received_date  DATE NOT NULL,
