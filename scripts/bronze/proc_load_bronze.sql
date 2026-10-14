@@ -16,6 +16,8 @@ Usage:
 ===============================================================================
 */
 
+DROP PROCEDURE IF EXISTS bronze.load_bronze() CASCADE;
+
 CREATE OR REPLACE PROCEDURE bronze.load_bronze()
 LANGUAGE plpgsql
 AS $$
@@ -96,25 +98,17 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 4. city
-    v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Ingesting: bronze.city';
-    TRUNCATE TABLE bronze.city;
-    INSERT INTO bronze.city (id, name, created_at, _ingested_at)
-    SELECT id, name, created_at, clock_timestamp()
-    FROM public.city;
-    GET DIAGNOSTICS v_row_count = ROW_COUNT;
-    v_total_rows := v_total_rows + v_row_count;
-    v_end_time := clock_timestamp();
-    RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
-        ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
-
-    -- 5. place
+    -- 4. place
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.place';
     TRUNCATE TABLE bronze.place;
-    INSERT INTO bronze.place (place_id, place_name, image_url, description, _ingested_at)
-    SELECT place_id, place_name, image_url, description, clock_timestamp()
+    INSERT INTO bronze.place (
+        place_id, place_name, image_url, description, 
+        latitude, longitude, geom, _ingested_at
+    )
+    SELECT 
+        place_id, place_name, image_url, description, 
+        latitude, longitude, geom, clock_timestamp()
     FROM public.place;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
@@ -122,7 +116,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 6. activity
+    -- 5. activity
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.activity';
     TRUNCATE TABLE bronze.activity;
@@ -135,7 +129,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 7. place_activity
+    -- 6. place_activity
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.place_activity';
     TRUNCATE TABLE bronze.place_activity;
@@ -148,15 +142,15 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 8. package
+    -- 7. package
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.package';
     TRUNCATE TABLE bronze.package;
     INSERT INTO bronze.package (
-        package_id, title, type, days, description, image_url, availability_status, _ingested_at
+        package_id, title, type, days, description, weather, image_url, availability_status, _ingested_at
     )
     SELECT 
-        package_id, title, type::VARCHAR, days::VARCHAR, description, image_url, availability_status::VARCHAR, clock_timestamp()
+        package_id, title, type::VARCHAR, days::VARCHAR, description, weather, image_url, availability_status::VARCHAR, clock_timestamp()
     FROM public.package;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
@@ -164,7 +158,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 9. package_place
+    -- 8. package_place
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.package_place';
     TRUNCATE TABLE bronze.package_place;
@@ -177,7 +171,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 10. booking
+    -- 9. booking
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.booking';
     TRUNCATE TABLE bronze.booking;
@@ -205,7 +199,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 11. booking_package
+    -- 10. booking_package
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.booking_package';
     TRUNCATE TABLE bronze.booking_package;
@@ -218,15 +212,15 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 12. payment
+    -- 11. payment
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.payment';
     TRUNCATE TABLE bronze.payment;
     INSERT INTO bronze.payment (
-        payment_id, booking_id, installment, amount, payment_method, received_date, recorded_by, notes, _ingested_at
+        payment_id, booking_id, amount, payment_method, received_date, recorded_by, notes, _ingested_at
     )
     SELECT 
-        payment_id, booking_id, installment::VARCHAR, amount, payment_method::VARCHAR, received_date, recorded_by, notes, clock_timestamp()
+        payment_id, booking_id, amount, payment_method::VARCHAR, received_date, recorded_by, notes, clock_timestamp()
     FROM public.payment;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
@@ -234,7 +228,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 13. review
+    -- 12. review
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.review';
     TRUNCATE TABLE bronze.review;
@@ -250,7 +244,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 14. review_image
+    -- 13. review_image
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.review_image';
     TRUNCATE TABLE bronze.review_image;
@@ -263,7 +257,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 15. contact_inquiry
+    -- 14. contact_inquiry
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.contact_inquiry';
     TRUNCATE TABLE bronze.contact_inquiry;
@@ -279,7 +273,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 16. contact_reply
+    -- 15. contact_reply
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.contact_reply';
     TRUNCATE TABLE bronze.contact_reply;
@@ -295,7 +289,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 17. chat_topic
+    -- 16. chat_topic
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.chat_topic';
     TRUNCATE TABLE bronze.chat_topic;
@@ -308,7 +302,7 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 18. chat_message
+    -- 17. chat_message
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.chat_message';
     TRUNCATE TABLE bronze.chat_message;

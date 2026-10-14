@@ -157,3 +157,36 @@ WHERE cat != TRIM(cat)
 SELECT DISTINCT 
     maintenance 
 FROM silver.erp_px_cat_g1v2;
+
+-- ====================================================================
+-- Checking 'silver.place' (GIS / Spatial Data Quality)
+-- ====================================================================
+-- Check for Invalid Coordinate Ranges
+-- Expectation: No Results (Latitudes between -90 and 90, Longitudes between -180 and 180)
+SELECT 
+    place_id,
+    place_name,
+    latitude,
+    longitude
+FROM silver.place
+WHERE (latitude IS NOT NULL AND (latitude < -90.0 OR latitude > 90.0))
+   OR (longitude IS NOT NULL AND (longitude < -180.0 OR longitude > 180.0));
+
+-- Check for Invalid PostGIS Geometries
+-- Expectation: No Results
+SELECT 
+    place_id,
+    place_name,
+    geom
+FROM silver.place
+WHERE geom IS NOT NULL AND ST_IsValid(geom) = FALSE;
+
+-- Check for PostGIS SRID Integrity (Must be EPSG:4326 / WGS 84)
+-- Expectation: No Results
+SELECT 
+    place_id,
+    place_name,
+    ST_SRID(geom) AS actual_srid
+FROM silver.place
+WHERE geom IS NOT NULL AND ST_SRID(geom) != 4326;
+

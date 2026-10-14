@@ -3,14 +3,26 @@
 -- \c tours
 
 -- =========================================================
+-- Extensions
+-- =========================================================
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- =========================================================
 -- Custom ENUM Types
 -- =========================================================
+DROP TYPE IF EXISTS user_role CASCADE;
 CREATE TYPE user_role AS ENUM ('ADMIN', 'CUSTOMER');
+
+DROP TYPE IF EXISTS auth_provider_type CASCADE;
 CREATE TYPE auth_provider_type AS ENUM ('LOCAL', 'GOOGLE', 'FACEBOOK');
+
+DROP TYPE IF EXISTS user_status CASCADE;
 CREATE TYPE user_status AS ENUM ('ACTIVE', 'BLOCKED');
 
+DROP TYPE IF EXISTS vehicle_status_type CASCADE;
 CREATE TYPE vehicle_status_type AS ENUM ('AVAILABLE', 'BOOKED', 'MAINTENANCE');
 
+DROP TYPE IF EXISTS package_type CASCADE;
 CREATE TYPE package_type AS ENUM (
     'ADVENTURE', 
     'CULTURAL HERITAGE', 
@@ -19,10 +31,17 @@ CREATE TYPE package_type AS ENUM (
     'HILL COUNTRY', 
     'SAFARI'
 );
+
+DROP TYPE IF EXISTS package_duration CASCADE;
 CREATE TYPE package_duration AS ENUM ('7 DAYS', '14 DAYS', '21 DAYS', '28 DAYS');
+
+DROP TYPE IF EXISTS availability_status_type CASCADE;
 CREATE TYPE availability_status_type AS ENUM ('AVAILABLE', 'UNAVAILABLE');
 
+DROP TYPE IF EXISTS tour_type_enum CASCADE;
 CREATE TYPE tour_type_enum AS ENUM ('P2P', 'PACKAGE');
+
+DROP TYPE IF EXISTS booking_status_type CASCADE;
 CREATE TYPE booking_status_type AS ENUM (
     'PENDING',
     'QUOTED',
@@ -35,15 +54,21 @@ CREATE TYPE booking_status_type AS ENUM (
     'CANCELLED'
 );
 
-CREATE TYPE payment_installment_type AS ENUM ('DEPOSIT', 'FINAL', 'ADDITIONAL', 'FULL');
+DROP TYPE IF EXISTS payment_installment_type CASCADE;
+
+DROP TYPE IF EXISTS payment_method_type CASCADE;
 CREATE TYPE payment_method_type AS ENUM ('CASH', 'BANK_TRANSFER');
 
+DROP TYPE IF EXISTS inquiry_status_type CASCADE;
 CREATE TYPE inquiry_status_type AS ENUM ('new', 'read', 'replied');
+
+DROP TYPE IF EXISTS sender_role_type CASCADE;
 CREATE TYPE sender_role_type AS ENUM ('customer', 'admin');
 
 -- =========================================================
 -- Helper Trigger for updated_at
 -- =========================================================
+DROP FUNCTION IF EXISTS set_updated_at() CASCADE;
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -55,6 +80,7 @@ $$ LANGUAGE plpgsql;
 -- =========================================================
 -- User & Authentication
 -- =========================================================
+DROP TABLE IF EXISTS "user" CASCADE;
 CREATE TABLE "user" (
     user_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -75,6 +101,7 @@ CREATE TABLE "user" (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TRIGGER IF EXISTS trg_user_updated_at ON "user" CASCADE;
 CREATE TRIGGER trg_user_updated_at
 BEFORE UPDATE ON "user"
 FOR EACH ROW
@@ -83,6 +110,7 @@ EXECUTE FUNCTION set_updated_at();
 -- =========================================================
 -- Fleet & Vehicles
 -- =========================================================
+DROP TABLE IF EXISTS vehicle_category CASCADE;
 CREATE TABLE vehicle_category (
     category_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL,
@@ -96,6 +124,7 @@ CREATE TABLE vehicle_category (
     ideal_trip_types VARCHAR(255)
 );
 
+DROP TABLE IF EXISTS vehicle CASCADE;
 CREATE TABLE vehicle (
     vehicle_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_id INTEGER NOT NULL,
@@ -127,19 +156,67 @@ CREATE TABLE vehicle (
 -- =========================================================
 -- Places & Activities
 -- =========================================================
-CREATE TABLE city (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
+DROP TABLE IF EXISTS place CASCADE;
 CREATE TABLE place (
     place_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     place_name VARCHAR(100) NOT NULL,
     image_url VARCHAR(255),
-    description TEXT
+    description TEXT,
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
+    geom GEOMETRY(Point, 4326)
 );
 
+-- Spatial index for high-performance GIS queries
+DROP INDEX IF EXISTS idx_place_geom CASCADE;
+CREATE INDEX idx_place_geom ON place USING GIST (geom);
+
+-- Trigger to keep coordinates and PostGIS point synchronized
+DROP FUNCTION IF EXISTS set_place_geom() CASCADE;
+CREATE OR REPLACE FUNCTION set_place_geom()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        -- On INSERT: if coordinates are provided and geom is omitted, generate geom
+        IF NEW.geom IS NULL AND NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
+            NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+        -- On INSERT: if geom is provided and coordinates are omitted, extract coordinates
+        ELSIF NEW.geom IS NOT NULL AND (NEW.longitude IS NULL OR NEW.latitude IS NULL) THEN
+            NEW.longitude := ST_X(NEW.geom);
+            NEW.latitude  := ST_Y(NEW.geom);
+        END IF;
+
+    ELSIF TG_OP = 'UPDATE' THEN
+        -- On UPDATE: if coordinates changed, recompute geom
+        IF NEW.longitude IS DISTINCT FROM OLD.longitude OR NEW.latitude IS DISTINCT FROM OLD.latitude THEN
+            IF NEW.longitude IS NOT NULL AND NEW.latitude IS NOT NULL THEN
+                NEW.geom := ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326);
+            ELSE
+                NEW.geom := NULL;
+            END IF;
+        -- On UPDATE: if geom changed directly, update coordinates
+        ELSIF NEW.geom IS DISTINCT FROM OLD.geom THEN
+            IF NEW.geom IS NOT NULL THEN
+                NEW.longitude := ST_X(NEW.geom);
+                NEW.latitude  := ST_Y(NEW.geom);
+            ELSE
+                NEW.longitude := NULL;
+                NEW.latitude  := NULL;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_place_geom ON place CASCADE;
+CREATE TRIGGER trg_place_geom
+BEFORE INSERT OR UPDATE ON place
+FOR EACH ROW
+EXECUTE FUNCTION set_place_geom();
+
+DROP TABLE IF EXISTS activity CASCADE;
 CREATE TABLE activity (
     activity_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     activity_name VARCHAR(100) NOT NULL,
@@ -147,6 +224,7 @@ CREATE TABLE activity (
     description TEXT
 );
 
+DROP TABLE IF EXISTS place_activity CASCADE;
 CREATE TABLE place_activity (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     place_id INTEGER NOT NULL,
@@ -158,16 +236,19 @@ CREATE TABLE place_activity (
 -- =========================================================
 -- Packages
 -- =========================================================
+DROP TABLE IF EXISTS package CASCADE;
 CREATE TABLE package (
     package_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title VARCHAR(150) NOT NULL,
     type package_type NOT NULL,
     days package_duration NOT NULL,
     description TEXT,
+    weather JSON,
     image_url VARCHAR(255),
     availability_status availability_status_type NOT NULL DEFAULT 'AVAILABLE'
 );
 
+DROP TABLE IF EXISTS package_place CASCADE;
 CREATE TABLE package_place (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     package_id INTEGER NOT NULL,
@@ -180,6 +261,7 @@ CREATE TABLE package_place (
 -- =========================================================
 -- Bookings & Payments
 -- =========================================================
+DROP TABLE IF EXISTS booking CASCADE;
 CREATE TABLE booking (
     booking_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -235,6 +317,7 @@ CREATE TABLE booking (
     CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(vehicle_id)
 );
 
+DROP TABLE IF EXISTS booking_package CASCADE;
 CREATE TABLE booking_package (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     booking_id INTEGER NOT NULL UNIQUE,
@@ -243,10 +326,10 @@ CREATE TABLE booking_package (
     CONSTRAINT fk_booking_package_package FOREIGN KEY (package_id) REFERENCES package(package_id)
 );
 
+DROP TABLE IF EXISTS payment CASCADE;
 CREATE TABLE payment (
     payment_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     booking_id INTEGER NOT NULL,
-    installment payment_installment_type NOT NULL,
     amount NUMERIC(10,2) NOT NULL,
     payment_method payment_method_type NOT NULL,
     received_date DATE NOT NULL,
@@ -259,6 +342,7 @@ CREATE TABLE payment (
 -- =========================================================
 -- Reviews
 -- =========================================================
+DROP TABLE IF EXISTS review CASCADE;
 CREATE TABLE review (
     review_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -272,6 +356,7 @@ CREATE TABLE review (
     CONSTRAINT fk_review_booking FOREIGN KEY (booking_id) REFERENCES booking(booking_id)
 );
 
+DROP TABLE IF EXISTS review_image CASCADE;
 CREATE TABLE review_image (
     image_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     review_id INTEGER NOT NULL,
@@ -279,6 +364,7 @@ CREATE TABLE review_image (
     CONSTRAINT fk_review_image_review FOREIGN KEY (review_id) REFERENCES review(review_id)
 );
 
+DROP VIEW IF EXISTS review_star_summary CASCADE;
 CREATE VIEW review_star_summary AS
 SELECT
     COUNT(*) AS total_reviews,
@@ -292,6 +378,7 @@ FROM review;
 -- =========================================================
 -- Support & Inquiries
 -- =========================================================
+DROP TABLE IF EXISTS contact_inquiry CASCADE;
 CREATE TABLE contact_inquiry (
     inquiry_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     sender_name VARCHAR(100) NOT NULL,
@@ -304,6 +391,7 @@ CREATE TABLE contact_inquiry (
     submitted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP TABLE IF EXISTS contact_reply CASCADE;
 CREATE TABLE contact_reply (
     reply_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     inquiry_id INTEGER NOT NULL,
@@ -319,6 +407,7 @@ CREATE TABLE contact_reply (
 -- =========================================================
 -- Chat System
 -- =========================================================
+DROP TABLE IF EXISTS chat_topic CASCADE;
 CREATE TABLE chat_topic (
     topic_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id INTEGER NOT NULL,
@@ -327,6 +416,7 @@ CREATE TABLE chat_topic (
     CONSTRAINT fk_chat_topic_user FOREIGN KEY (user_id) REFERENCES "user"(user_id)
 );
 
+DROP TABLE IF EXISTS chat_message CASCADE;
 CREATE TABLE chat_message (
     message_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     topic_id INTEGER NOT NULL,

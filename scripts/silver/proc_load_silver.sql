@@ -18,6 +18,8 @@ Usage:
 ===============================================================================
 */
 
+DROP PROCEDURE IF EXISTS silver.load_silver() CASCADE;
+
 CREATE OR REPLACE PROCEDURE silver.load_silver()
 LANGUAGE plpgsql
 AS $$
@@ -191,45 +193,38 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 4. city
-    -- ------------------------------------------------------------------
-    v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Transforming: silver.city';
-    TRUNCATE TABLE silver.city CASCADE;
-
-    INSERT INTO silver.city (id, name, created_at, _loaded_at)
-    SELECT
-        id,
-        INITCAP(TRIM(name)) AS name,
-        created_at,
-        clock_timestamp() AS _loaded_at
-    FROM (
-        SELECT *,
-               ROW_NUMBER() OVER (PARTITION BY id ORDER BY _ingested_at DESC) AS rn
-        FROM bronze.city
-        WHERE id IS NOT NULL
-    ) src
-    WHERE rn = 1;
-
-    GET DIAGNOSTICS v_row_count = ROW_COUNT;
-    v_total_rows := v_total_rows + v_row_count;
-    v_end_time := clock_timestamp();
-    RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
-        ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
-
-    -- ------------------------------------------------------------------
-    -- 5. place
+    -- 4. place
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.place';
     TRUNCATE TABLE silver.place CASCADE;
 
-    INSERT INTO silver.place (place_id, place_name, image_url, description, _loaded_at)
+    INSERT INTO silver.place (
+        place_id, place_name, image_url, description, 
+        latitude, longitude, geom, _loaded_at
+    )
     SELECT
         place_id,
         INITCAP(TRIM(place_name)) AS place_name,
         TRIM(image_url) AS image_url,
         TRIM(description) AS description,
+        CASE 
+            WHEN latitude BETWEEN -90.0 AND 90.0 THEN latitude 
+            ELSE NULL 
+        END AS latitude,
+        CASE 
+            WHEN longitude BETWEEN -180.0 AND 180.0 THEN longitude 
+            ELSE NULL 
+        END AS longitude,
+        COALESCE(
+            geom,
+            CASE 
+                WHEN latitude BETWEEN -90.0 AND 90.0 
+                 AND longitude BETWEEN -180.0 AND 180.0 
+                THEN ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+                ELSE NULL 
+            END
+        ) AS geom,
         clock_timestamp() AS _loaded_at
     FROM (
         SELECT *,
@@ -246,7 +241,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 6. activity
+    -- 5. activity
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.activity';
@@ -274,7 +269,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 7. place_activity
+    -- 6. place_activity
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.place_activity';
@@ -301,14 +296,14 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 8. package
+    -- 7. package
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.package';
     TRUNCATE TABLE silver.package CASCADE;
 
     INSERT INTO silver.package (
-        package_id, title, type, days, description, image_url, availability_status, is_available, _loaded_at
+        package_id, title, type, days, description, weather, image_url, availability_status, is_available, _loaded_at
     )
     SELECT
         package_id,
@@ -316,6 +311,7 @@ BEGIN
         UPPER(TRIM(type)) AS type,
         UPPER(TRIM(days)) AS days,
         TRIM(description) AS description,
+        weather,
         TRIM(image_url) AS image_url,
         COALESCE(UPPER(TRIM(availability_status)), 'AVAILABLE') AS availability_status,
         CASE WHEN UPPER(TRIM(availability_status)) = 'AVAILABLE' THEN TRUE ELSE FALSE END AS is_available,
@@ -335,7 +331,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 9. package_place
+    -- 8. package_place
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.package_place';
@@ -363,7 +359,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 10. booking
+    -- 9. booking
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.booking';
@@ -441,7 +437,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 11. booking_package
+    -- 10. booking_package
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.booking_package';
@@ -468,19 +464,18 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 12. payment
+    -- 11. payment
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.payment';
     TRUNCATE TABLE silver.payment CASCADE;
 
     INSERT INTO silver.payment (
-        payment_id, booking_id, installment, amount, payment_method, received_date, recorded_by, notes, _loaded_at
+        payment_id, booking_id, amount, payment_method, received_date, recorded_by, notes, _loaded_at
     )
     SELECT
         payment_id,
         booking_id,
-        COALESCE(UPPER(TRIM(installment)), 'FULL') AS installment,
         ROUND(GREATEST(COALESCE(amount, 0.00), 0.00), 2) AS amount,
         COALESCE(UPPER(TRIM(payment_method)), 'CASH') AS payment_method,
         received_date,
@@ -502,7 +497,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 13. review
+    -- 12. review
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.review';
@@ -536,7 +531,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 14. review_image
+    -- 13. review_image
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.review_image';
@@ -563,7 +558,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 15. contact_inquiry
+    -- 14. contact_inquiry
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.contact_inquiry';
@@ -598,7 +593,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 16. contact_reply
+    -- 15. contact_reply
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.contact_reply';
@@ -630,7 +625,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 17. chat_topic
+    -- 16. chat_topic
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.chat_topic';
@@ -658,7 +653,7 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 18. chat_message
+    -- 17. chat_message
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Transforming: silver.chat_message';
