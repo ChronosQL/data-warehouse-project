@@ -503,40 +503,6 @@ SELECT
     ci.submitted_at + interval '1 hour 45 minutes'
 FROM contact_inquiry ci;
 
--- =========================================================
--- 14. CHAT SYSTEM (450 Live Threads & 1,350 Messages)
--- =========================================================
-INSERT INTO chat_topic (user_id, subject, created_at)
-SELECT 
-    u.user_id,
-    (ARRAY['Flight delay CMB update', 'Changing hotel stop in Nuwara Eliya', 'Driver meeting point at arrival hall', 'Luggage size confirmation'])[1 + (i % 4)],
-    u.created_at + interval '1 day'
-FROM "user" u
-JOIN generate_series(1, 450) AS s(i) ON u.user_id = (10 + i);
-
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
-SELECT 
-    ct.topic_id,
-    ct.user_id,
-    'Hi, could you let our driver know our flight was rescheduled by 45 minutes? See you at arrival gate B.',
-    ct.created_at + interval '10 minutes'
-FROM chat_topic ct;
-
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
-SELECT 
-    ct.topic_id,
-    1 + (ct.topic_id % 10), -- Admin sender
-    'Noted with thanks! Our airport coordinator and driver are tracking your flight number live on radar. Take your time at customs.',
-    ct.created_at + interval '18 minutes'
-FROM chat_topic ct;
-
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
-SELECT 
-    ct.topic_id,
-    ct.user_id,
-    'Thank you so much for the quick confirmation!',
-    ct.created_at + interval '25 minutes'
-FROM chat_topic ct;
 
 COMMIT;
 
@@ -555,8 +521,5 @@ UNION ALL SELECT 'payment', count(*) FROM payment
 UNION ALL SELECT 'review', count(*) FROM review
 UNION ALL SELECT 'review_image', count(*) FROM review_image
 UNION ALL SELECT 'contact_inquiry', count(*) FROM contact_inquiry
-UNION ALL SELECT 'chat_topic', count(*) FROM chat_topic
-UNION ALL SELECT 'chat_message', count(*) FROM chat_message;
 
-select * from place;
-select * from package;
+
