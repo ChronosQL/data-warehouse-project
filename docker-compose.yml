@@ -5,20 +5,22 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: tours_dw
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/01_init_database.sql:ro
-      - ./scripts/bronze/ddl_bronze.sql:/docker-entrypoint-initdb.d/02_ddl_bronze.sql:ro
-      - ./scripts/bronze/proc_load_bronze.sql:/docker-entrypoint-initdb.d/03_proc_load_bronze.sql:ro
-      - ./scripts/silver/ddl_silver.sql:/docker-entrypoint-initdb.d/04_ddl_silver.sql:ro
-      - ./scripts/silver/proc_load_silver.sql:/docker-entrypoint-initdb.d/05_proc_load_silver.sql:ro
+      - ./scripts/init_database_data.sql:/docker-entrypoint-initdb.d/02_init_database_data.sql:ro
+      - ./scripts/bronze/ddl_bronze.sql:/docker-entrypoint-initdb.d/03_ddl_bronze.sql:ro
+      - ./scripts/bronze/proc_load_bronze.sql:/docker-entrypoint-initdb.d/04_proc_load_bronze.sql:ro
+      - ./scripts/silver/ddl_silver.sql:/docker-entrypoint-initdb.d/05_ddl_silver.sql:ro
+      - ./scripts/silver/proc_load_silver.sql:/docker-entrypoint-initdb.d/06_proc_load_silver.sql:ro
+      - ./scripts/run_pipeline.sql:/docker-entrypoint-initdb.d/07_run_pipeline.sql:ro
       - ./datasets:/datasets:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tours_dw"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d tours_dw"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,6 +33,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_LISTEN_PORT: 80
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
     ports:
       - "5050:80"
     depends_on:
@@ -38,6 +41,7 @@ services:
         condition: service_healthy
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
 
 volumes:
   pgdata:

@@ -337,12 +337,22 @@ BEGIN
     RAISE NOTICE '>> Transforming: silver.package_place';
     TRUNCATE TABLE silver.package_place CASCADE;
 
-    INSERT INTO silver.package_place (id, package_id, place_id, day_number, _loaded_at)
+    INSERT INTO silver.package_place (
+        id, package_id, place_id, day_number, latitude, longitude, geom, _loaded_at
+    )
     SELECT
         id,
         package_id,
         place_id,
         GREATEST(COALESCE(day_number, 1), 1) AS day_number,
+        COALESCE(latitude, CASE WHEN geom IS NOT NULL THEN ST_Y(geom)::numeric(10, 7) END) AS latitude,
+        COALESCE(longitude, CASE WHEN geom IS NOT NULL THEN ST_X(geom)::numeric(10, 7) END) AS longitude,
+        COALESCE(
+            geom,
+            CASE WHEN longitude IS NOT NULL AND latitude IS NOT NULL
+                 THEN ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+            END
+        ) AS geom,
         clock_timestamp() AS _loaded_at
     FROM (
         SELECT *,
@@ -369,6 +379,7 @@ BEGIN
         booking_id, user_id, customer_name, contact_platform, contact_number,
         contact_platform2, contact_number2, tour_type, category_id, vehicle_id,
         start_date, end_date, pickup_time, start_location, end_location,
+        pickup_lat, pickup_lng, pickup_geom, dropoff_lat, dropoff_lng, dropoff_geom,
         total_days, days_required, total_passengers, no_of_adults, no_of_children,
         ages_of_children, total_luggage_count, luggage_10kg, luggage_25kg, luggage_35kg,
         quoted_price, additional_charges, total_price, notes, tour_thoughts,
@@ -391,6 +402,22 @@ BEGIN
         pickup_time,
         INITCAP(TRIM(start_location)) AS start_location,
         INITCAP(TRIM(end_location)) AS end_location,
+        pickup_lat,
+        pickup_lng,
+        COALESCE(
+            pickup_geom,
+            CASE WHEN pickup_lng IS NOT NULL AND pickup_lat IS NOT NULL
+                 THEN ST_SetSRID(ST_MakePoint(pickup_lng, pickup_lat), 4326)
+            END
+        ) AS pickup_geom,
+        dropoff_lat,
+        dropoff_lng,
+        COALESCE(
+            dropoff_geom,
+            CASE WHEN dropoff_lng IS NOT NULL AND dropoff_lat IS NOT NULL
+                 THEN ST_SetSRID(ST_MakePoint(dropoff_lng, dropoff_lat), 4326)
+            END
+        ) AS dropoff_geom,
         GREATEST(COALESCE(total_days, 1), 1) AS total_days,
         GREATEST(COALESCE(days_required, 1), 1) AS days_required,
         (GREATEST(COALESCE(no_of_adults, 1), 1) + GREATEST(COALESCE(no_of_children, 0), 0)) AS total_passengers,
@@ -471,16 +498,22 @@ BEGIN
     TRUNCATE TABLE silver.payment CASCADE;
 
     INSERT INTO silver.payment (
-        payment_id, booking_id, amount, payment_method, received_date, recorded_by, notes, _loaded_at
+        payment_id, booking_id, installment, amount, payment_method,
+        received_date, recorded_by, status, is_approved, slip_url, notes, created_at, _loaded_at
     )
     SELECT
         payment_id,
         booking_id,
+        COALESCE(UPPER(TRIM(installment)), 'FULL') AS installment,
         ROUND(GREATEST(COALESCE(amount, 0.00), 0.00), 2) AS amount,
         COALESCE(UPPER(TRIM(payment_method)), 'CASH') AS payment_method,
         received_date,
         recorded_by,
+        COALESCE(UPPER(TRIM(status)), 'PENDING') AS status,
+        CASE WHEN UPPER(TRIM(status)) = 'APPROVED' THEN TRUE ELSE FALSE END AS is_approved,
+        TRIM(slip_url) AS slip_url,
         TRIM(notes) AS notes,
+        created_at,
         clock_timestamp() AS _loaded_at
     FROM (
         SELECT *,
@@ -625,53 +658,28 @@ BEGIN
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
     -- ------------------------------------------------------------------
-    -- 16. chat_topic
+    -- 16. booking_status_history
     -- ------------------------------------------------------------------
     v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Transforming: silver.chat_topic';
-    TRUNCATE TABLE silver.chat_topic CASCADE;
+    RAISE NOTICE '>> Transforming: silver.booking_status_history';
+    TRUNCATE TABLE silver.booking_status_history CASCADE;
 
-    INSERT INTO silver.chat_topic (topic_id, user_id, subject, created_at, _loaded_at)
+    INSERT INTO silver.booking_status_history (
+        history_id, booking_id, old_status, new_status, admin_note, changed_at, _loaded_at
+    )
     SELECT
-        topic_id,
-        user_id,
-        TRIM(subject) AS subject,
-        created_at,
+        history_id,
+        booking_id,
+        UPPER(TRIM(old_status)) AS old_status,
+        UPPER(TRIM(new_status)) AS new_status,
+        TRIM(admin_note) AS admin_note,
+        changed_at,
         clock_timestamp() AS _loaded_at
     FROM (
         SELECT *,
-               ROW_NUMBER() OVER (PARTITION BY topic_id ORDER BY _ingested_at DESC) AS rn
-        FROM bronze.chat_topic
-        WHERE topic_id IS NOT NULL
-    ) src
-    WHERE rn = 1;
-
-    GET DIAGNOSTICS v_row_count = ROW_COUNT;
-    v_total_rows := v_total_rows + v_row_count;
-    v_end_time := clock_timestamp();
-    RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
-        ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
-
-    -- ------------------------------------------------------------------
-    -- 17. chat_message
-    -- ------------------------------------------------------------------
-    v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Transforming: silver.chat_message';
-    TRUNCATE TABLE silver.chat_message CASCADE;
-
-    INSERT INTO silver.chat_message (message_id, topic_id, sender_id, message, sent_at, _loaded_at)
-    SELECT
-        message_id,
-        topic_id,
-        sender_id,
-        TRIM(message) AS message,
-        sent_at,
-        clock_timestamp() AS _loaded_at
-    FROM (
-        SELECT *,
-               ROW_NUMBER() OVER (PARTITION BY message_id ORDER BY _ingested_at DESC) AS rn
-        FROM bronze.chat_message
-        WHERE message_id IS NOT NULL
+               ROW_NUMBER() OVER (PARTITION BY history_id ORDER BY _ingested_at DESC) AS rn
+        FROM bronze.booking_status_history
+        WHERE history_id IS NOT NULL AND booking_id IS NOT NULL
     ) src
     WHERE rn = 1;
 

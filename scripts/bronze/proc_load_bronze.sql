@@ -162,8 +162,8 @@ BEGIN
     v_start_time := clock_timestamp();
     RAISE NOTICE '>> Ingesting: bronze.package_place';
     TRUNCATE TABLE bronze.package_place;
-    INSERT INTO bronze.package_place (id, package_id, place_id, day_number, _ingested_at)
-    SELECT id, package_id, place_id, day_number, clock_timestamp()
+    INSERT INTO bronze.package_place (id, package_id, place_id, day_number, latitude, longitude, geom, _ingested_at)
+    SELECT id, package_id, place_id, day_number, latitude, longitude, geom, clock_timestamp()
     FROM public.package_place;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
@@ -179,6 +179,7 @@ BEGIN
         booking_id, user_id, customer_name, contact_platform, contact_number,
         contact_platform2, contact_number2, tour_type, category_id, vehicle_id,
         start_date, end_date, pickup_time, start_location, end_location,
+        pickup_lat, pickup_lng, pickup_geom, dropoff_lat, dropoff_lng, dropoff_geom,
         total_days, days_required, luggage_10kg, luggage_25kg, luggage_35kg,
         no_of_adults, no_of_children, ages_of_children, quoted_price, additional_charges,
         notes, tour_thoughts, admin_note, booking_date, booking_status,
@@ -188,6 +189,7 @@ BEGIN
         booking_id, user_id, customer_name, contact_platform, contact_number,
         contact_platform2, contact_number2, tour_type::VARCHAR, category_id, vehicle_id,
         start_date, end_date, pickup_time, start_location, end_location,
+        pickup_lat, pickup_lng, pickup_geom, dropoff_lat, dropoff_lng, dropoff_geom,
         total_days, days_required, luggage_10kg, luggage_25kg, luggage_35kg,
         no_of_adults, no_of_children, ages_of_children, quoted_price, additional_charges,
         notes, tour_thoughts, admin_note, booking_date, booking_status::VARCHAR,
@@ -217,10 +219,12 @@ BEGIN
     RAISE NOTICE '>> Ingesting: bronze.payment';
     TRUNCATE TABLE bronze.payment;
     INSERT INTO bronze.payment (
-        payment_id, booking_id, amount, payment_method, received_date, recorded_by, notes, _ingested_at
+        payment_id, booking_id, installment, amount, payment_method,
+        received_date, recorded_by, status, slip_url, notes, created_at, _ingested_at
     )
     SELECT 
-        payment_id, booking_id, amount, payment_method::VARCHAR, received_date, recorded_by, notes, clock_timestamp()
+        payment_id, booking_id, installment, amount, payment_method::VARCHAR,
+        received_date, recorded_by, status, slip_url, notes, created_at, clock_timestamp()
     FROM public.payment;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
@@ -289,26 +293,16 @@ BEGIN
     RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
         ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
 
-    -- 16. chat_topic
+    -- 16. booking_status_history
     v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Ingesting: bronze.chat_topic';
-    TRUNCATE TABLE bronze.chat_topic;
-    INSERT INTO bronze.chat_topic (topic_id, user_id, subject, created_at, _ingested_at)
-    SELECT topic_id, user_id, subject, created_at, clock_timestamp()
-    FROM public.chat_topic;
-    GET DIAGNOSTICS v_row_count = ROW_COUNT;
-    v_total_rows := v_total_rows + v_row_count;
-    v_end_time := clock_timestamp();
-    RAISE NOTICE '   Loaded % rows in % ms', v_row_count, 
-        ROUND(EXTRACT(EPOCH FROM (v_end_time - v_start_time)) * 1000);
-
-    -- 17. chat_message
-    v_start_time := clock_timestamp();
-    RAISE NOTICE '>> Ingesting: bronze.chat_message';
-    TRUNCATE TABLE bronze.chat_message;
-    INSERT INTO bronze.chat_message (message_id, topic_id, sender_id, message, sent_at, _ingested_at)
-    SELECT message_id, topic_id, sender_id, message, sent_at, clock_timestamp()
-    FROM public.chat_message;
+    RAISE NOTICE '>> Ingesting: bronze.booking_status_history';
+    TRUNCATE TABLE bronze.booking_status_history;
+    INSERT INTO bronze.booking_status_history (
+        history_id, booking_id, old_status, new_status, admin_note, changed_at, _ingested_at
+    )
+    SELECT 
+        history_id, booking_id, old_status::VARCHAR, new_status::VARCHAR, admin_note, changed_at, clock_timestamp()
+    FROM public.booking_status_history;
     GET DIAGNOSTICS v_row_count = ROW_COUNT;
     v_total_rows := v_total_rows + v_row_count;
     v_end_time := clock_timestamp();

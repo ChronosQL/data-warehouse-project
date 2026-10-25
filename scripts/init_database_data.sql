@@ -257,23 +257,32 @@ VALUES
 -- 7. PACKAGE-PLACE ROUTING
 -- =========================================================
 -- Connect packages to places systematically across their required day counts
-INSERT INTO package_place (package_id, place_id, day_number)
+INSERT INTO package_place (package_id, place_id, day_number, latitude, longitude)
 SELECT 
-    pkg.package_id,
-    1 + (((pkg.package_id * 7) + d * 5) % 150) AS place_id,
-    d AS day_number
-FROM package pkg
-CROSS JOIN LATERAL (
-    SELECT generate_series(
-        1, 
-        CASE 
-            WHEN pkg.days = '7 DAYS' THEN 7
-            WHEN pkg.days = '14 DAYS' THEN 14
-            WHEN pkg.days = '21 DAYS' THEN 21
-            ELSE 28
-        END
-    ) AS d
-) days_gen;
+    sub.package_id,
+    sub.place_id,
+    sub.day_number,
+    p.latitude,
+    p.longitude
+FROM (
+    SELECT 
+        pkg.package_id,
+        1 + (((pkg.package_id * 7) + d * 5) % 150) AS place_id,
+        d AS day_number
+    FROM package pkg
+    CROSS JOIN LATERAL (
+        SELECT generate_series(
+            1, 
+            CASE 
+                WHEN pkg.days = '7 DAYS' THEN 7
+                WHEN pkg.days = '14 DAYS' THEN 14
+                WHEN pkg.days = '21 DAYS' THEN 21
+                ELSE 28
+            END
+        ) AS d
+    ) days_gen
+) sub
+JOIN place p ON p.place_id = sub.place_id;
 
 -- =========================================================
 -- 8. USERS (1,500 Foreign Inbound Travelers + 10 Admins)
@@ -331,7 +340,8 @@ FROM generate_series(1, 1500) AS s(i);
 INSERT INTO booking (
     user_id, customer_name, contact_platform, contact_number, tour_type, 
     category_id, vehicle_id, start_date, end_date, pickup_time, 
-    start_location, end_location, total_days, days_required, 
+    start_location, end_location, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
+    total_days, days_required, 
     luggage_10kg, luggage_25kg, luggage_35kg, no_of_adults, no_of_children, ages_of_children, 
     quoted_price, additional_charges, notes, tour_thoughts, admin_note, 
     booking_date, booking_status, quoted_at, confirmed_at, tour_started_at, completed_at, closed_at
@@ -349,6 +359,10 @@ SELECT
     '08:00:00'::TIME + (interval '30 minutes' * (i % 8)),
     (ARRAY['Bandaranaike International Airport (CMB)', 'Mattala Rajapaksa Airport (HRI)', 'Colombo Fort Hotel', 'Negombo Beach Resort', 'Galle Fort Heritage Villa'])[1 + (i % 5)],
     (ARRAY['Bandaranaike International Airport (CMB)', 'Colombo Port Passenger Terminal', 'Negombo Beach Hotel', 'Mirissa Coast Hotel', 'Colombo City Center'])[1 + (i % 5)],
+    (ARRAY[7.1807560, 6.2917780, 6.9344440, 7.2341670, 6.0305560])[1 + (i % 5)]::numeric(10, 7),
+    (ARRAY[79.8841450, 81.1241670, 79.8427780, 79.8430560, 80.2172220])[1 + (i % 5)]::numeric(10, 7),
+    (ARRAY[7.1807560, 6.9450000, 7.2280000, 5.9482600, 6.9180000])[1 + (i % 5)]::numeric(10, 7),
+    (ARRAY[79.8841450, 79.8520000, 79.8410000, 80.4578100, 79.8550000])[1 + (i % 5)]::numeric(10, 7),
     b_days,
     b_days,
     1 + (i % 3),
@@ -415,31 +429,64 @@ FROM booking b
 WHERE b.tour_type = 'PACKAGE';
 
 -- =========================================================
--- 11. PAYMENTS (3,200 Deposit & Final Settlements)
+-- 11. PAYMENTS (Deposit, Final Settlements & Pending Slips)
 -- =========================================================
 -- 1st Installment (Advance Deposit of 30% upon confirmation)
-INSERT INTO payment (booking_id, amount, payment_method, received_date, recorded_by, notes)
+INSERT INTO payment (
+    booking_id, installment, amount, payment_method, received_date, 
+    recorded_by, status, slip_url, notes, created_at
+)
 SELECT 
     b.booking_id,
+    'ADVANCE',
     ROUND((b.quoted_price * 0.30)::NUMERIC, 2),
     (ARRAY['BANK_TRANSFER', 'CASH', 'BANK_TRANSFER'])[1 + (b.booking_id % 3)]::payment_method_type,
     b.booking_date + 2,
     1 + (b.booking_id % 10), -- Recorded by one of the 10 Admin users
-    'Initial 30% advance booking deposit received and verified via swift/gateway.'
+    'APPROVED',
+    'https://payments.ceylontours.com/slips/deposit-' || b.booking_id || '.pdf',
+    'Initial 30% advance booking deposit received and verified via swift/gateway.',
+    (b.booking_date + 2)::TIMESTAMPTZ + interval '10 hours'
 FROM booking b
 WHERE b.booking_status IN ('CONFIRMED', 'TOUR_STARTED', 'COMPLETED', 'CLOSED');
 
 -- 2nd Installment (Final Balance of 70% paid on arrival / tour start)
-INSERT INTO payment (booking_id, amount, payment_method, received_date, recorded_by, notes)
+INSERT INTO payment (
+    booking_id, installment, amount, payment_method, received_date, 
+    recorded_by, status, slip_url, notes, created_at
+)
 SELECT 
     b.booking_id,
+    'FINAL',
     ROUND((b.quoted_price * 0.70 + b.additional_charges)::NUMERIC, 2),
     (ARRAY['CASH', 'BANK_TRANSFER', 'CASH'])[1 + (b.booking_id % 3)]::payment_method_type,
     b.start_date,
     1 + ((b.booking_id + 3) % 10),
-    'Final settlement balance paid in full upon arrival / start of vehicle dispatch.'
+    'APPROVED',
+    CASE WHEN (b.booking_id % 3) != 1 THEN 'https://payments.ceylontours.com/slips/settlement-' || b.booking_id || '.pdf' ELSE NULL END,
+    'Final settlement balance paid in full upon arrival / start of vehicle dispatch.',
+    b.start_date::TIMESTAMPTZ + interval '9 hours'
 FROM booking b
 WHERE b.booking_status IN ('TOUR_STARTED', 'COMPLETED', 'CLOSED');
+
+-- Pending unverified payments (customers uploaded bank slips awaiting admin verification)
+INSERT INTO payment (
+    booking_id, installment, amount, payment_method, received_date, 
+    recorded_by, status, slip_url, notes, created_at
+)
+SELECT 
+    b.booking_id,
+    'ADVANCE',
+    ROUND((b.quoted_price * 0.30)::NUMERIC, 2),
+    'BANK_TRANSFER'::payment_method_type,
+    NULL,
+    NULL,
+    'PENDING',
+    'https://payments.ceylontours.com/slips/pending-transfer-' || b.booking_id || '.pdf',
+    'Customer submitted bank payment slip online; waiting for operational admin verification.',
+    b.booking_date::TIMESTAMPTZ + interval '14 hours'
+FROM booking b
+WHERE b.booking_status = 'ACCEPTED';
 
 -- =========================================================
 -- 12. REVIEWS & REVIEW IMAGES (~1,000 Verified Experiences)
@@ -504,39 +551,94 @@ SELECT
 FROM contact_inquiry ci;
 
 -- =========================================================
--- 14. CHAT SYSTEM (450 Live Threads & 1,350 Messages)
+-- 14. BOOKING STATUS HISTORY (Audited Lifecycle Transitions)
 -- =========================================================
-INSERT INTO chat_topic (user_id, subject, created_at)
+-- 1. Initial booking submission
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
 SELECT 
-    u.user_id,
-    (ARRAY['Flight delay CMB update', 'Changing hotel stop in Nuwara Eliya', 'Driver meeting point at arrival hall', 'Luggage size confirmation'])[1 + (i % 4)],
-    u.created_at + interval '1 day'
-FROM "user" u
-JOIN generate_series(1, 450) AS s(i) ON u.user_id = (10 + i);
+    b.booking_id,
+    NULL,
+    'PENDING'::booking_status_type,
+    'Customer inquiry submitted via online booking portal.',
+    b.booking_date::TIMESTAMPTZ + interval '10 minutes'
+FROM booking b;
 
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
+-- 2. Itinerary quotation sent
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
 SELECT 
-    ct.topic_id,
-    ct.user_id,
-    'Hi, could you let our driver know our flight was rescheduled by 45 minutes? See you at arrival gate B.',
-    ct.created_at + interval '10 minutes'
-FROM chat_topic ct;
+    b.booking_id,
+    'PENDING'::booking_status_type,
+    'QUOTED'::booking_status_type,
+    'Official itinerary quotation and pricing dispatched to customer.',
+    b.quoted_at
+FROM booking b
+WHERE b.quoted_at IS NOT NULL;
 
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
+-- 3. Customer accepted quote
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
 SELECT 
-    ct.topic_id,
-    1 + (ct.topic_id % 10), -- Admin sender
-    'Noted with thanks! Our airport coordinator and driver are tracking your flight number live on radar. Take your time at customs.',
-    ct.created_at + interval '18 minutes'
-FROM chat_topic ct;
+    b.booking_id,
+    'QUOTED'::booking_status_type,
+    'ACCEPTED'::booking_status_type,
+    'Customer accepted tour quote terms and requested payment gateway details.',
+    b.quoted_at + interval '6 hours'
+FROM booking b
+WHERE b.booking_status IN ('ACCEPTED', 'CONFIRMED', 'TOUR_STARTED', 'COMPLETED', 'CLOSED');
 
-INSERT INTO chat_message (topic_id, sender_id, message, sent_at)
+-- 4. Advance payment verified and tour confirmed
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
 SELECT 
-    ct.topic_id,
-    ct.user_id,
-    'Thank you so much for the quick confirmation!',
-    ct.created_at + interval '25 minutes'
-FROM chat_topic ct;
+    b.booking_id,
+    'ACCEPTED'::booking_status_type,
+    'CONFIRMED'::booking_status_type,
+    'Advance deposit verified by finance desk. Dedicated vehicle and chauffeur reserved.',
+    b.confirmed_at
+FROM booking b
+WHERE b.confirmed_at IS NOT NULL;
+
+-- 5. Cancelled tours
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
+SELECT 
+    b.booking_id,
+    'CONFIRMED'::booking_status_type,
+    'CANCELLED'::booking_status_type,
+    'Customer cancelled booking due to flight schedule alterations.',
+    b.booking_date::TIMESTAMPTZ + interval '3 days'
+FROM booking b
+WHERE b.booking_status = 'CANCELLED';
+
+-- 6. Tour commenced
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
+SELECT 
+    b.booking_id,
+    'CONFIRMED'::booking_status_type,
+    'TOUR_STARTED'::booking_status_type,
+    'Chauffeur met client at airport arrival terminal. Tour officially commenced.',
+    b.tour_started_at
+FROM booking b
+WHERE b.tour_started_at IS NOT NULL;
+
+-- 7. Tour completed
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
+SELECT 
+    b.booking_id,
+    'TOUR_STARTED'::booking_status_type,
+    'COMPLETED'::booking_status_type,
+    'Tour itinerary executed completely. Guest arrived at departure terminal safely.',
+    b.completed_at
+FROM booking b
+WHERE b.completed_at IS NOT NULL;
+
+-- 8. Final audit and closed
+INSERT INTO booking_status_history (booking_id, old_status, new_status, admin_note, changed_at)
+SELECT 
+    b.booking_id,
+    'COMPLETED'::booking_status_type,
+    'CLOSED'::booking_status_type,
+    'Final financial audit reconciled and feedback review processed.',
+    b.closed_at
+FROM booking b
+WHERE b.closed_at IS NOT NULL;
 
 COMMIT;
 
@@ -555,8 +657,7 @@ UNION ALL SELECT 'payment', count(*) FROM payment
 UNION ALL SELECT 'review', count(*) FROM review
 UNION ALL SELECT 'review_image', count(*) FROM review_image
 UNION ALL SELECT 'contact_inquiry', count(*) FROM contact_inquiry
-UNION ALL SELECT 'chat_topic', count(*) FROM chat_topic
-UNION ALL SELECT 'chat_message', count(*) FROM chat_message;
+UNION ALL SELECT 'booking_status_history', count(*) FROM booking_status_history;
 
 select * from place;
 select * from package;

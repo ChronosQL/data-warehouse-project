@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Tours Data Warehouse",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "tours_dw",
+      "Username": "admin",
+      "SSLMode": "prefer"
+    }
+  }
+}

@@ -24,6 +24,7 @@ CREATE SCHEMA IF NOT EXISTS gold;
 -- =========================================================
 -- Drop Existing Bronze Tables
 -- =========================================================
+DROP TABLE IF EXISTS bronze.booking_status_history CASCADE;
 DROP TABLE IF EXISTS bronze.chat_message CASCADE;
 DROP TABLE IF EXISTS bronze.chat_topic CASCADE;
 DROP TABLE IF EXISTS bronze.contact_reply CASCADE;
@@ -160,6 +161,9 @@ CREATE TABLE bronze.package_place (
     package_id   INTEGER,
     place_id     INTEGER,
     day_number   INTEGER,
+    latitude     NUMERIC(10, 7),
+    longitude    NUMERIC(10, 7),
+    geom         GEOMETRY(Point, 4326),
     _ingested_at TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
@@ -182,6 +186,12 @@ CREATE TABLE bronze.booking (
     pickup_time        TIME,
     start_location     VARCHAR(100),
     end_location       VARCHAR(100),
+    pickup_lat         NUMERIC(10, 7),
+    pickup_lng         NUMERIC(10, 7),
+    pickup_geom        GEOMETRY(Point, 4326),
+    dropoff_lat        NUMERIC(10, 7),
+    dropoff_lng        NUMERIC(10, 7),
+    dropoff_geom       GEOMETRY(Point, 4326),
     total_days         INTEGER,
     days_required      INTEGER,
     luggage_10kg       INTEGER,
@@ -215,11 +225,15 @@ CREATE TABLE bronze.booking_package (
 CREATE TABLE bronze.payment (
     payment_id     INTEGER,
     booking_id     INTEGER,
+    installment    VARCHAR(50),
     amount         NUMERIC(10,2),
     payment_method VARCHAR(50),
     received_date  DATE,
     recorded_by    INTEGER,
+    status         VARCHAR(50),
+    slip_url       TEXT,
     notes          TEXT,
+    created_at     TIMESTAMPTZ,
     _ingested_at   TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
@@ -272,21 +286,14 @@ CREATE TABLE bronze.contact_reply (
 );
 
 -- =========================================================
--- Bronze: Chat System
+-- Bronze: Lifecycle & Audit History
 -- =========================================================
-CREATE TABLE bronze.chat_topic (
-    topic_id     INTEGER,
-    user_id      INTEGER,
-    subject      VARCHAR(100),
-    created_at   TIMESTAMPTZ,
-    _ingested_at TIMESTAMPTZ DEFAULT clock_timestamp()
-);
-
-CREATE TABLE bronze.chat_message (
-    message_id   INTEGER,
-    topic_id     INTEGER,
-    sender_id    INTEGER,
-    message      TEXT,
-    sent_at      TIMESTAMPTZ,
+CREATE TABLE bronze.booking_status_history (
+    history_id   INTEGER,
+    booking_id   INTEGER,
+    old_status   VARCHAR(50),
+    new_status   VARCHAR(50),
+    admin_note   TEXT,
+    changed_at   TIMESTAMPTZ,
     _ingested_at TIMESTAMPTZ DEFAULT clock_timestamp()
 );

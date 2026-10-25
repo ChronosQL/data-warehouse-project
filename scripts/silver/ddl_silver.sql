@@ -21,6 +21,7 @@ CREATE SCHEMA IF NOT EXISTS silver;
 -- =========================================================
 -- Drop Existing Silver Tables
 -- =========================================================
+DROP TABLE IF EXISTS silver.booking_status_history CASCADE;
 DROP TABLE IF EXISTS silver.chat_message CASCADE;
 DROP TABLE IF EXISTS silver.chat_topic CASCADE;
 DROP TABLE IF EXISTS silver.contact_reply CASCADE;
@@ -168,8 +169,15 @@ CREATE TABLE silver.package_place (
     package_id   INTEGER NOT NULL REFERENCES silver.package(package_id),
     place_id     INTEGER NOT NULL REFERENCES silver.place(place_id),
     day_number   INTEGER NOT NULL,
+    latitude     NUMERIC(10, 7),
+    longitude    NUMERIC(10, 7),
+    geom         GEOMETRY(Point, 4326),
     _loaded_at   TIMESTAMPTZ DEFAULT clock_timestamp()
 );
+
+-- Spatial index for high-performance GIS analytics
+DROP INDEX IF EXISTS silver.idx_silver_package_place_geom CASCADE;
+CREATE INDEX idx_silver_package_place_geom ON silver.package_place USING GIST (geom);
 
 -- =========================================================
 -- Silver: Bookings & Payments
@@ -190,6 +198,12 @@ CREATE TABLE silver.booking (
     pickup_time          TIME,
     start_location       VARCHAR(100),
     end_location         VARCHAR(100),
+    pickup_lat           NUMERIC(10, 7),
+    pickup_lng           NUMERIC(10, 7),
+    pickup_geom          GEOMETRY(Point, 4326),
+    dropoff_lat          NUMERIC(10, 7),
+    dropoff_lng          NUMERIC(10, 7),
+    dropoff_geom         GEOMETRY(Point, 4326),
     total_days           INTEGER NOT NULL,
     days_required        INTEGER NOT NULL,
     total_passengers     INTEGER NOT NULL DEFAULT 1,
@@ -219,6 +233,13 @@ CREATE TABLE silver.booking (
     _loaded_at           TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
+-- Spatial GIST indexes for booking pickup and dropoff points
+DROP INDEX IF EXISTS silver.idx_silver_booking_pickup_geom CASCADE;
+CREATE INDEX idx_silver_booking_pickup_geom ON silver.booking USING GIST (pickup_geom);
+
+DROP INDEX IF EXISTS silver.idx_silver_booking_dropoff_geom CASCADE;
+CREATE INDEX idx_silver_booking_dropoff_geom ON silver.booking USING GIST (dropoff_geom);
+
 CREATE TABLE silver.booking_package (
     id           INTEGER PRIMARY KEY,
     booking_id   INTEGER NOT NULL UNIQUE REFERENCES silver.booking(booking_id),
@@ -229,11 +250,16 @@ CREATE TABLE silver.booking_package (
 CREATE TABLE silver.payment (
     payment_id     INTEGER PRIMARY KEY,
     booking_id     INTEGER NOT NULL REFERENCES silver.booking(booking_id),
+    installment    VARCHAR(50) NOT NULL DEFAULT 'FULL',
     amount         NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     payment_method VARCHAR(50) NOT NULL,
-    received_date  DATE NOT NULL,
-    recorded_by    INTEGER NOT NULL REFERENCES silver."user"(user_id),
+    received_date  DATE,
+    recorded_by    INTEGER REFERENCES silver."user"(user_id),
+    status         VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    is_approved    BOOLEAN NOT NULL DEFAULT FALSE,
+    slip_url       TEXT,
     notes          TEXT,
+    created_at     TIMESTAMPTZ,
     _loaded_at     TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
@@ -286,21 +312,17 @@ CREATE TABLE silver.contact_reply (
 );
 
 -- =========================================================
--- Silver: Chat System
+-- Silver: Lifecycle & Audit History
 -- =========================================================
-CREATE TABLE silver.chat_topic (
-    topic_id     INTEGER PRIMARY KEY,
-    user_id      INTEGER NOT NULL REFERENCES silver."user"(user_id),
-    subject      VARCHAR(100),
-    created_at   TIMESTAMPTZ,
-    _loaded_at   TIMESTAMPTZ DEFAULT clock_timestamp()
+CREATE TABLE silver.booking_status_history (
+    history_id  INTEGER PRIMARY KEY,
+    booking_id  INTEGER NOT NULL REFERENCES silver.booking(booking_id) ON DELETE CASCADE,
+    old_status  VARCHAR(50),
+    new_status  VARCHAR(50) NOT NULL,
+    admin_note  TEXT,
+    changed_at  TIMESTAMPTZ,
+    _loaded_at  TIMESTAMPTZ DEFAULT clock_timestamp()
 );
 
-CREATE TABLE silver.chat_message (
-    message_id   INTEGER PRIMARY KEY,
-    topic_id     INTEGER NOT NULL REFERENCES silver.chat_topic(topic_id),
-    sender_id    INTEGER NOT NULL REFERENCES silver."user"(user_id),
-    message      TEXT NOT NULL,
-    sent_at      TIMESTAMPTZ,
-    _loaded_at   TIMESTAMPTZ DEFAULT clock_timestamp()
-);
+DROP INDEX IF EXISTS silver.idx_silver_booking_status_hist_booking_id CASCADE;
+CREATE INDEX idx_silver_booking_status_hist_booking_id ON silver.booking_status_history(booking_id);
