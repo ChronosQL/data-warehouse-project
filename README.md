@@ -59,13 +59,27 @@ The data pipeline transitions through the **Medallion Architecture**:
    - Records transformation timestamps via `_loaded_at TIMESTAMPTZ`.
 
 4. **Gold Layer (`gold`)**:
-   - Houses analytical views, dimensional models, and aggregated metrics for business intelligence and reporting.
+   - Houses analytical views, dimensional models, and aggregated marts structured in an **Enterprise Star Schema**:
+     - **Dimensions**:
+       - `gold.dim_date`: Conformed calendar dimension with Sri Lanka **tourism seasons** (`PEAK_WINTER`, `SUMMER_PEAK`, `OFF_PEAK_MONSOON`), weekend flags, quarters, and days of week.
+       - `gold.dim_customers`: Customer profiles with RFM segmentation (`VIP Traveler`, `Regular`, `Standard`, `Prospect`), spend stats, and lifetime booking counts.
+       - `gold.dim_vehicles`: Fleet inventory with vehicle specs, pricing, passenger/luggage capacities, and insurance status.
+       - `gold.dim_destinations`: 150+ tourist spots with PostGIS coordinates, activity counts, and package route inclusions.
+       - `gold.dim_packages`: Pre-packaged itineraries, durations, and stop counts.
+       - `gold.dim_activities`: Tourist experiences (Safaris, Whale Watching, Surfing, Hiking, Tea Tasting) grouped by activity categories.
+     - **Facts & Data Marts**:
+       - `gold.fact_bookings`: Core booking transactions with financial realization statuses, passenger breakdowns, and reviews.
+       - `gold.fact_payments`: Installment payment transactions and verification states.
+       - `gold.fact_booking_lifecycle`: Turnaround and funnel analytics tracking **12,094 status changes**, hours elapsed per state, and cancellation reasons.
+       - `gold.fact_customer_inquiries`: Lead generation tracking, support response latency (in hours), and 24-hour SLA breach flags.
+       - `gold.fact_reviews`: Feedback sentiment categorization (`EXCELLENT`, `GOOD`, `AVERAGE`, `POOR`), photo attach rates, and driver ratings.
+       - `gold.mart_daily_performance`: Daily booking volumes, confirmed revenue, conversion rates, and passenger totals.
 
 ---
 
 ## 🚀 Quick Start (One-Click Docker Setup)
 
-The entire environment—including database initialization, operational data seeding, Medallion layer DDLs, and automated pipeline execution—spins up with a single Docker Compose command.
+The entire environment—including database initialization, operational data seeding, Medallion layer DDLs, automated pipeline execution, pgAdmin 4, and Metabase Business Intelligence—spins up with a single Docker Compose command.
 
 ### 1. Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running on Windows, macOS, or Linux)
@@ -85,13 +99,26 @@ Upon startup, the PostgreSQL container automatically executes the following scri
 4. `04_proc_load_bronze.sql` $\rightarrow$ Compiles the `bronze.load_bronze()` stored procedure.
 5. `05_ddl_silver.sql` $\rightarrow$ Builds the Silver cleansed schema and spatial indexes.
 6. `06_proc_load_silver.sql` $\rightarrow$ Compiles the `silver.load_silver()` stored procedure.
-7. `07_run_pipeline.sql` $\rightarrow$ **Automatically runs the Bronze and Silver ETL pipelines**.
+7. `07_ddl_gold.sql` $\rightarrow$ Builds the analytical Gold Star Schema views and data marts.
+8. `08_run_pipeline.sql` $\rightarrow$ **Automatically runs the Bronze and Silver ETL pipelines**.
 
 ---
 
-## 🖥️ Database & pgAdmin Access
+## 📊 Analytics & BI Access
 
-### Web Interface (pgAdmin 4)
+### Business Intelligence (Metabase - Zero-Touch Auto-Configured)
+- **URL**: [http://localhost:3000](http://localhost:3000)
+- **Credentials** (Pre-configured automatically on startup):
+  - **Email**: `admin@admin.com`
+  - **Password**: `AdminPassword123!`
+- **Database Status**: The **`Tours Data Warehouse`** (`tours_dw`) connection and all **`gold`** and **`silver`** models are **automatically connected and synced** upon startup by the `metabase_init` companion service. Zero manual wizard clicks required!
+- **Recommended Dashboards & Visualizations**:
+  - **Revenue & Bookings Trend**: Plot `gold.mart_daily_performance` over `booking_date` (Line / Bar charts).
+  - **Traveler Geo Distribution**: Use `gold.dim_destinations` with latitude/longitude for interactive pin maps.
+  - **Customer Tier Breakdown**: Pie / Donut chart of `gold.dim_customers` grouped by `customer_tier`.
+  - **Financial Realization**: Breakdown of `gold.fact_bookings` by `financial_status` (Fully Paid, Partially Paid, Unpaid).
+
+### Database Administration (pgAdmin 4)
 - **URL**: [http://localhost:5050](http://localhost:5050)
 - **Email**: `admin@admin.com`
 - **Password**: `admin`
@@ -112,7 +139,7 @@ Upon startup, the PostgreSQL container automatically executes the following scri
 
 ```
 sql-data-warehouse-project/
-├── docker-compose.yml              # Multi-container orchestration (PostgreSQL + PostGIS & pgAdmin 4)
+├── docker-compose.yml              # Multi-container orchestration (PostgreSQL + PostGIS, pgAdmin 4, Metabase)
 ├── pgadmin/
 │   └── servers.json                # Pre-configured pgAdmin server registration
 ├── scripts/
@@ -125,7 +152,8 @@ sql-data-warehouse-project/
 │   ├── silver/
 │   │   ├── ddl_silver.sql          # Silver layer schema definition (cleansed & indexed)
 │   │   └── proc_load_silver.sql    # Transformation procedure: bronze -> silver
-│   └── gold/                       # Analytical data models & dimensional views
+│   └── gold/
+│       └── ddl_gold.sql            # Gold layer dimensional views & business marts
 ├── datasets/                       # Reference datasets and CSV source files
 ├── docs/                           # Architecture diagrams, data flow charts & data catalog
 ├── tests/                          # Data quality and validation test scripts
