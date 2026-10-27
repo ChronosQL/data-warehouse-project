@@ -153,12 +153,40 @@ sql-data-warehouse-project/
 │   │   ├── ddl_silver.sql          # Silver layer schema definition (cleansed & indexed)
 │   │   └── proc_load_silver.sql    # Transformation procedure: bronze -> silver
 │   └── gold/
-│       └── ddl_gold.sql            # Gold layer dimensional views & business marts
+│       ├── ddl_gold.sql            # Gold layer dimensional views & business marts
+│       └── business_queries.sql    # 20 human-readable executive & operational analytical queries
 ├── datasets/                       # Reference datasets and CSV source files
 ├── docs/                           # Architecture diagrams, data flow charts & data catalog
 ├── tests/                          # Data quality and validation test scripts
 └── README.md                       # Project documentation
 ```
+
+---
+
+## 📈 20 Human-Readable Business Analytics Queries
+
+The warehouse includes 20 production-ready analytical queries in [`scripts/gold/business_queries.sql`](file:///c:/Users/Lenovo/Desktop/Projects/personal/data_engineering/sql-data-warehouse-project/scripts/gold/business_queries.sql) designed for executive and operational decision-making:
+
+1. **Tourism Seasonality & Revenue Fluctuation Analysis** — Peak vs. Monsoon performance drop-off.
+2. **Month-over-Month (MoM) Revenue Growth** — Trajectory tracking via `LAG()`.
+3. **Cumulative Annual Revenue Run-Rate** — Year-to-date pacing toward budget targets.
+4. **Accounts Receivable & Balance Aging** — Unpaid receivables exposure across customer tiers.
+5. **Customer Tier Distribution (VIP Segmentation)** — High-roller spend vs. standard travelers.
+6. **Geographic Market Penetration** — Inbound tourist volume and revenue by origin country.
+7. **Repeat Traveler Retention Rate** — Loyalty analysis (one-and-done vs. repeat bookers).
+8. **High-Value Customer Churn Risk** — Lapsed VIP customers with no trips in 6+ months.
+9. **Vehicle Profitability & Daily Revenue Yield** — Return on investment by vehicle class.
+10. **Idle Fleet Identification** — Vehicles sitting parked $>30$ days causing depreciation loss.
+11. **Seating Capacity Utilization** — Dispatches with $<40\%$ seat occupancy (preventing over-allocation).
+12. **Vehicle Preference by Tour Duration** — Vehicle choices for day trips vs. cross-country tours.
+13. **Destination GMV Popularity Ranking** — Top 10 destinations driving tour package revenue.
+14. **Activity Category Revenue Contribution** — Safari/Wildlife vs. Surfing vs. Cultural revenue split.
+15. **Tour Package Cancellation Rates** — Packages with $>25\%$ drop-offs needing itinerary revision.
+16. **Spatial Travel Corridor Density** — Top origin-destination pairs for driver staging.
+17. **Booking Funnel Conversion & Bottlenecks** — Drop-off rates across `PENDING` $\rightarrow$ `CONFIRMED` $\rightarrow$ `COMPLETED`.
+18. **Staff Confirmation Turnaround SLA** — Average operational hours to confirm booking requests.
+19. **Customer Inquiry Response Latency** — General lead support response times and 24h SLA breaches.
+20. **Driver Service Quality & Review Sentiment** — Driver leaderboards by 5-star ratings and complaint themes.
 
 ---
 
@@ -175,6 +203,31 @@ CALL silver.load_silver();
 ```
 
 Both procedures output real-time execution timing diagnostics and loaded row counts for every table.
+
+---
+
+## 🎓 Project Information
+
+This project is developed as part of the **ICT3183 – Group Project / Advanced Database Management Systems (ADBMS)** module at the Faculty of Technology, University of Ruhuna.
+
+- **Degree:** Bachelor of Information and Communication Technology (BICT) (Hons)
+- **Year / Semester:** 3rd Year – 1st Semester
+- **Project Type:** Real-World ICT Industry Group Project
+- **Client Organization:** Ceylon Best Tours
+- **Client Representative:** Mr. Dilshan
+- **Repository:** [ChronosQL/adbms-project](https://github.com/ChronosQL/adbms-project.git)
+
+---
+
+## 👥 Group 09
+
+| Name | Registration Number |
+|:---|:---|
+| R.P.J.M. Ruvanpathirana | TG/2022/1351 |
+| G.R.K.M.T. Rathnayaka | TG/2022/1380 |
+| W.K.G. Rajapaksha | TG/2022/1382 |
+| R. W. M. A. S Bandara | TG/2022/1386 |
+| W.M.A.K. Keshali | TG/2022/1419 |
 
 ---
 
