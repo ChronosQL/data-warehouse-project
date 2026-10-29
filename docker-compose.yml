@@ -11,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./scripts/create_metabase_db.sql:/docker-entrypoint-initdb.d/00_create_metabase_db.sql:ro
       - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/01_init_database.sql:ro
       - ./scripts/init_database_data.sql:/docker-entrypoint-initdb.d/02_init_database_data.sql:ro
       - ./scripts/bronze/ddl_bronze.sql:/docker-entrypoint-initdb.d/03_ddl_bronze.sql:ro
@@ -51,8 +52,19 @@ services:
     ports:
       - "3000:3000"
     environment:
-      MB_DB_FILE: /metabase-data/metabase.db
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: admin
+      MB_DB_PASS: admin123
+      MB_DB_HOST: postgres
       MB_SETUP_TOKEN: "tours-dw-metabase-setup-token-2026"
+      MB_SESSION_SECRET_KEY: "tours-dw-metabase-session-key-2026-secure-auth-3183"
+      MB_EMOJI_IN_LOGS: "false"
+      MB_ANONYMOUS_TRACKING_ENABLED: "false"
+      MB_CHECK_FOR_UPDATES: "false"
+      MB_DISABLE_DRIVERS: "bigquery-cloud-sdk,snowflake,sparksql,databricks,athena,druid-jdbc,redshift,vertica,clickhouse,oracle"
+      JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
     volumes:
       - metabase_data:/metabase-data
     depends_on:
@@ -76,4 +88,3 @@ volumes:
     driver: local
   metabase_data:
     driver: local
-

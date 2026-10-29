@@ -8,9 +8,9 @@ echo "=========================================================="
 echo "Waiting for Metabase service on http://metabase:3000..."
 
 # Wait until Metabase health endpoint returns 200
-until curl -s -f http://metabase:3000/api/health > /dev/null 2>&1; do
-    echo "Metabase is still starting up... waiting 5 seconds..."
-    sleep 5
+until curl -s -f --connect-timeout 2 http://metabase:3000/api/health > /dev/null 2>&1; do
+    echo "Metabase is still starting up... waiting 2 seconds..."
+    sleep 2
 done
 
 echo "Metabase is UP and HEALTHY!"
