@@ -1,262 +1,371 @@
 BEGIN;
 
--- =========================================================
--- 1. VEHICLE CATEGORIES (7 Categories)
--- =========================================================
-INSERT INTO vehicle_category (
-    category_name, description, passenger_capacity, luggage_capacity, 
-    best_for, comfort_level, ac_available, ideal_trip_types
-) VALUES
-('Budget Sedan', 'Fuel-efficient compact sedans for solo travellers or couples.', '1-3 Passengers', '2 Large Bags', 'Couples, Solo Travelers', 'Standard', TRUE, 'Airport Transfers, City Tours, Short Excursions'),
-('Premium Sedan', 'Spacious executive sedans offering extra legroom and luxury ride comfort.', '1-3 Passengers', '3 Large Bags', 'Couples, Business Travelers', 'Premium Luxury', TRUE, 'Cultural Triangle, Round Tours'),
-('Compact SUV / Mini Crossover', 'Higher ground clearance ideal for hill country roads and rough terrain.', '1-4 Passengers', '3 Large Bags', 'Small Families, Photographers', 'High Comfort', TRUE, 'Ella, Nuwara Eliya, Horton Plains'),
-('Luxury Safari Jeep', 'Custom modified 4x4 vehicles with elevated tiered seating and canvas roofs.', '1-6 Passengers', 'Daypacks Only', 'Wildlife Enthusiasts', 'Rugged Safari', FALSE, 'Yala, Wilpattu, Udawalawe, Minneriya'),
-('KDH High-Roof Luxury Van', 'Spacious touring van with reclining velvet seats and personal charging ports.', '4-9 Passengers', '8 Large Bags', 'Medium Family Groups, Extended Tours', 'First Class Comfort', TRUE, 'Complete Island Tours, Multi-Day Cross Country'),
-('Mini Coach', 'Comfortable medium-sized tourist coach for extended tour groups and large families.', '10-18 Passengers', '15 Large Bags', 'Group Excursions, Corporate Retreats', 'Executive Tour Class', TRUE, 'Historical Circuits, Coastal Highway Tours'),
-('Executive VIP Coach', 'Large luxury touring coach equipped with onboard microphone, cooler box, and individual AC.', '19-33 Passengers', '30 Large Bags', 'Incentive Travel, Large Tour Groups', 'Ultra Luxury', TRUE, 'Charter Island Circuits, All-Island Heritage Expeditions');
+-- IMPORTANT: This is a synthetic demonstration dataset for development/testing.
+-- Customer identities, contact details, vehicle registrations, fleet licence IDs,
+-- insurance dates, bookings, payments and reviews are illustrative placeholders,
+-- not records of real customers, vehicles, operators or transactions.
+-- Destination names and approximate coordinates are based on known Sri Lankan places.
+-- Vehicle rates are indicative sample LKR/day transport rates, not all-inclusive package prices;
+-- confirm driver, fuel, mileage, meals, accommodation, taxes and insurance inclusions with suppliers.
 
 -- =========================================================
--- 2. VEHICLES (40 Registered Tour Vehicles)
+-- 1. VEHICLE CATEGORIES (7 Sri Lanka-appropriate categories)
+-- Passenger and luggage capacities are indicative; verify each actual vehicle.
+-- Daily prices below are sample LKR rates, not a live quotation.
+-- =========================================================
+INSERT INTO vehicle_category (
+    category_name, description, passenger_capacity, luggage_capacity,
+    best_for, comfort_level, ac_available, ideal_trip_types
+) VALUES
+('Economy Sedan', 'Compact air-conditioned car suitable for up to 3 passengers with light luggage.', '1-3 Passengers', '2 Medium Bags', 'Solo travellers, couples, airport transfers', 'Standard', TRUE, 'Airport Transfers, Colombo City Trips, Short Intercity Trips'),
+('Executive Sedan', 'Comfortable executive sedan for up to 3 passengers and moderate luggage.', '1-3 Passengers', '2-3 Medium Bags', 'Couples, business travellers, small families', 'Premium', TRUE, 'Airport Transfers, Cultural Triangle, Island Tours'),
+('Compact SUV', 'Higher-clearance SUV or crossover suitable for hill-country and intercity travel.', '1-4 Passengers', '2-3 Medium Bags', 'Small families, couples, hill-country travel', 'High Comfort', TRUE, 'Hill Country, Intercity Travel, Family Trips'),
+('Safari 4x4 Jeep', 'Open or pop-top 4x4 safari jeep operated by a park-authorised safari provider.', '1-6 Passengers', 'Daypacks Only', 'Wildlife visitors, photographers', 'Safari', FALSE, 'Yala, Udawalawe, Wilpattu, Minneriya, Kaudulla'),
+('Tourist Van (HiAce/KDH)', 'Air-conditioned passenger van suitable for family and small-group tours.', '6-9 Passengers', '5-8 Medium Bags', 'Families, small groups', 'Comfort', TRUE, 'Airport Transfers, Multi-Day Island Tours'),
+('Mini Coach', 'Air-conditioned mini coach for medium-sized tour groups.', '15-25 Passengers', 'Group Luggage', 'School, corporate and group travel', 'Executive', TRUE, 'Group Excursions, Multi-Day Tours'),
+('Tourist Coach', 'Full-size air-conditioned coach for larger organised groups.', '26-45 Passengers', 'Underfloor Group Luggage', 'Large tour groups, events', 'Executive', TRUE, 'Group Tours, Events, Island Circuits');
+
+
+-- =========================================================
+-- 2. VEHICLES (40 synthetic sample fleet records)
+-- Registration-like numbers and fleet IDs are demo placeholders, NOT real registrations/licences.
+-- Prices are indicative LKR/day sample rates. Confirm inclusions and actual supplier quotations.
 -- =========================================================
 INSERT INTO vehicle (
     category_id, vehicle_number, vehicle_license, name, color, manufactured_year,
     adult_seats, baby_seats, luggage_capacity, price_per_day, insurance_provider,
     insurance_start_date, insurance_end_date, vehicle_status, brand, model,
     fuel_type, transmission, air_conditioning, mileage, engine_capacity, features
-)
-SELECT 
-    CASE 
-        WHEN i <= 8  THEN 1 -- Budget Sedan
-        WHEN i <= 15 THEN 2 -- Premium Sedan
-        WHEN i <= 21 THEN 3 -- Compact SUV
-        WHEN i <= 26 THEN 4 -- Safari Jeep
-        WHEN i <= 34 THEN 5 -- KDH Van
-        WHEN i <= 38 THEN 6 -- Mini Coach
-        ELSE 7              -- VIP Coach
-    END AS category_id,
-    'WP ' || (ARRAY['CAB', 'CAD', 'CBA', 'CBB', 'CBC', 'GA', 'GB', 'ND', 'PD'])[1 + (i % 9)] || '-' || LPAD((1000 + i * 73)::TEXT, 4, '0') AS vehicle_number,
-    'LIC-SLTDA-2024-' || LPAD(i::TEXT, 4, '0') AS vehicle_license,
-    (ARRAY['Toyota Prius', 'Toyota Camry', 'Toyota Corolla Axio', 'Honda Vezel', 'Toyota Prado', 'Mahindra Bolero 4x4 Safari', 'Toyota HiAce KDH Super GL', 'Toyota Coaster', 'King Long Luxury Coach'])[1 + (i % 9)] || ' Fleet #' || i AS name,
-    (ARRAY['Pearl White', 'Silver Metallic', 'Deep Ocean Blue', 'Champagne Gold', 'Matte Forest Green', 'Graphite Black'])[1 + (i % 6)] AS color,
-    2018 + (i % 6) AS manufactured_year,
-    CASE 
-        WHEN i <= 15 THEN 4
-        WHEN i <= 21 THEN 4
-        WHEN i <= 26 THEN 6
-        WHEN i <= 34 THEN 9
-        WHEN i <= 38 THEN 16
-        ELSE 32 
-    END AS adult_seats,
-    CASE WHEN i <= 34 THEN 1 + (i % 2) ELSE 0 END AS baby_seats,
-    CASE 
-        WHEN i <= 15 THEN 3
-        WHEN i <= 21 THEN 4
-        WHEN i <= 26 THEN 2
-        WHEN i <= 34 THEN 9
-        WHEN i <= 38 THEN 18
-        ELSE 35 
-    END AS luggage_capacity,
-    CASE 
-        WHEN i <= 8  THEN 55.00
-        WHEN i <= 15 THEN 80.00
-        WHEN i <= 21 THEN 95.00
-        WHEN i <= 26 THEN 110.00
-        WHEN i <= 34 THEN 130.00
-        WHEN i <= 38 THEN 185.00
-        ELSE 275.00 
-    END AS price_per_day,
-    (ARRAY['Sri Lanka Insurance Corporation', 'Ceylinco General Insurance', 'Allianz Insurance Lanka', 'Union Assurance'])[1 + (i % 4)] AS insurance_provider,
-    '2024-01-01'::DATE + (i * 7) AS insurance_start_date,
-    '2026-12-31'::DATE AS insurance_end_date,
-    'AVAILABLE'::vehicle_status_type,
-    (ARRAY['Toyota', 'Honda', 'Nissan', 'Mahindra', 'Mitsubishi', 'King Long'])[1 + (i % 6)] AS brand,
-    (ARRAY['HiAce Super GL', 'Axio Fielder', 'Prado TX', 'Bolero Customized', 'Coaster Executive', 'Camry Hybrid'])[1 + (i % 6)] AS model,
-    CASE WHEN i BETWEEN 22 AND 26 THEN 'Diesel' WHEN i % 2 = 0 THEN 'Hybrid Petrol' ELSE 'Diesel' END AS fuel_type,
-    CASE WHEN i BETWEEN 22 AND 26 THEN 'Manual' ELSE 'Automatic' END AS transmission,
-    CASE WHEN i BETWEEN 22 AND 26 THEN FALSE ELSE TRUE END AS air_conditioning,
-    42000 + (i * 3150) AS mileage,
-    (ARRAY['1500cc', '1800cc', '2000cc', '2500cc', '2800cc', '4000cc'])[1 + (i % 6)] AS engine_capacity,
-    'GPS Tracking, Bluetooth Audio, Speed Limiter, Dashcam, First Aid Kit, Bottled Water Cooler' AS features
-FROM generate_series(1, 40) AS s(i);
+) VALUES
+(1, 'WP CAA-1001', 'SAMPLE-FLEET-0001', 'Toyota Aqua - Demo Fleet 1', 'Silver', 2018, 3, 0, 2, 18000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Aqua', 'Hybrid Petrol', 'Automatic', TRUE, 29200, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1002', 'SAMPLE-FLEET-0002', 'Toyota Vitz - Demo Fleet 2', 'Grey', 2019, 3, 0, 2, 16500.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Vitz', 'Petrol', 'Automatic', TRUE, 33400, '1000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1003', 'SAMPLE-FLEET-0003', 'Suzuki Swift - Demo Fleet 3', 'Black', 2020, 3, 0, 2, 17000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Suzuki', 'Swift', 'Petrol', 'Automatic', TRUE, 37600, '1200cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1004', 'SAMPLE-FLEET-0004', 'Suzuki Wagon R - Demo Fleet 4', 'Blue', 2021, 3, 0, 2, 15000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Suzuki', 'Wagon R', 'Hybrid Petrol', 'Automatic', TRUE, 41800, '660cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1005', 'SAMPLE-FLEET-0005', 'Toyota Axio - Demo Fleet 5', 'White', 2022, 3, 0, 2, 19000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Axio', 'Petrol', 'Automatic', TRUE, 46000, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1006', 'SAMPLE-FLEET-0006', 'Perodua Bezza - Demo Fleet 6', 'Silver', 2023, 3, 0, 2, 15500.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Perodua', 'Bezza', 'Petrol', 'Automatic', TRUE, 50200, '1300cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1007', 'SAMPLE-FLEET-0007', 'Toyota Prius - Demo Fleet 7', 'Grey', 2024, 3, 0, 2, 20000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Prius', 'Hybrid Petrol', 'Automatic', TRUE, 54400, '1800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(1, 'WP CAA-1008', 'SAMPLE-FLEET-0008', 'Honda Fit - Demo Fleet 8', 'Black', 2025, 3, 0, 2, 17500.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Honda', 'Fit', 'Hybrid Petrol', 'Automatic', TRUE, 58600, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1009', 'SAMPLE-FLEET-0009', 'Toyota Axio Hybrid - Demo Fleet 9', 'Blue', 2017, 3, 0, 3, 25000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Axio Hybrid', 'Hybrid Petrol', 'Automatic', TRUE, 62800, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1010', 'SAMPLE-FLEET-0010', 'Toyota Premio - Demo Fleet 10', 'White', 2018, 3, 0, 3, 30000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Premio', 'Petrol', 'Automatic', TRUE, 67000, '1800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1011', 'SAMPLE-FLEET-0011', 'Toyota Allion - Demo Fleet 11', 'Silver', 2019, 3, 0, 3, 28000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Allion', 'Petrol', 'Automatic', TRUE, 71200, '1800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1012', 'SAMPLE-FLEET-0012', 'Honda Grace - Demo Fleet 12', 'Grey', 2020, 3, 0, 3, 26000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Honda', 'Grace', 'Hybrid Petrol', 'Automatic', TRUE, 75400, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1013', 'SAMPLE-FLEET-0013', 'Toyota Camry - Demo Fleet 13', 'Black', 2021, 3, 0, 3, 35000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Camry', 'Hybrid Petrol', 'Automatic', TRUE, 79600, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1014', 'SAMPLE-FLEET-0014', 'Nissan Sylphy - Demo Fleet 14', 'Blue', 2022, 3, 0, 3, 27000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Nissan', 'Sylphy', 'Petrol', 'Automatic', TRUE, 83800, '1800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(2, 'WP CAA-1015', 'SAMPLE-FLEET-0015', 'Honda Civic - Demo Fleet 15', 'White', 2023, 3, 0, 3, 30000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Honda', 'Civic', 'Petrol', 'Automatic', TRUE, 88000, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1016', 'SAMPLE-FLEET-0016', 'Honda Vezel - Demo Fleet 16', 'Silver', 2024, 4, 0, 3, 30000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Honda', 'Vezel', 'Hybrid Petrol', 'Automatic', TRUE, 92200, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1017', 'SAMPLE-FLEET-0017', 'Toyota Raize - Demo Fleet 17', 'Grey', 2025, 4, 0, 3, 28000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Raize', 'Petrol', 'Automatic', TRUE, 96400, '1000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1018', 'SAMPLE-FLEET-0018', 'Toyota Rush - Demo Fleet 18', 'Black', 2017, 4, 1, 4, 32000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Rush', 'Petrol', 'Automatic', TRUE, 100600, '1500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1019', 'SAMPLE-FLEET-0019', 'Mitsubishi Outlander - Demo Fleet 19', 'Blue', 2018, 4, 0, 4, 35000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Mitsubishi', 'Outlander', 'Petrol', 'Automatic', TRUE, 104800, '2400cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1020', 'SAMPLE-FLEET-0020', 'Toyota RAV4 - Demo Fleet 20', 'White', 2019, 4, 0, 4, 38000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'RAV4', 'Hybrid Petrol', 'Automatic', TRUE, 109000, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(3, 'WP CAA-1021', 'SAMPLE-FLEET-0021', 'Toyota Fortuner - Demo Fleet 21', 'Silver', 2020, 4, 1, 4, 45000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Fortuner', 'Diesel', 'Automatic', TRUE, 113200, '2800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(4, 'WP CAA-1022', 'SAMPLE-FLEET-0022', 'Toyota Land Cruiser Prado Safari - Demo Fleet 22', 'Grey', 2021, 6, 0, 2, 45000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Land Cruiser Prado Safari', 'Diesel', 'Automatic', FALSE, 117400, '2800cc', '4WD, Safari Seating, First Aid Kit'),
+(4, 'WP CAA-1023', 'SAMPLE-FLEET-0023', 'Toyota Hilux Safari Jeep - Demo Fleet 23', 'Black', 2022, 6, 0, 2, 42000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Hilux Safari Jeep', 'Diesel', 'Manual', FALSE, 121600, '2800cc', '4WD, Safari Seating, First Aid Kit'),
+(4, 'WP CAA-1024', 'SAMPLE-FLEET-0024', 'Mahindra Bolero Safari Jeep - Demo Fleet 24', 'Blue', 2023, 6, 1, 2, 35000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Mahindra', 'Bolero Safari Jeep', 'Diesel', 'Manual', FALSE, 125800, '2500cc', '4WD, Safari Seating, First Aid Kit'),
+(4, 'WP CAA-1025', 'SAMPLE-FLEET-0025', 'Nissan Patrol Safari Jeep - Demo Fleet 25', 'White', 2024, 6, 0, 2, 50000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Nissan', 'Patrol Safari Jeep', 'Petrol', 'Automatic', FALSE, 130000, '4000cc', '4WD, Safari Seating, First Aid Kit'),
+(4, 'WP CAA-1026', 'SAMPLE-FLEET-0026', 'Toyota Land Cruiser Safari Jeep - Demo Fleet 26', 'Silver', 2025, 6, 0, 2, 55000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Land Cruiser Safari Jeep', 'Diesel', 'Automatic', FALSE, 134200, '3000cc', '4WD, Safari Seating, First Aid Kit'),
+(5, 'WP CAA-1027', 'SAMPLE-FLEET-0027', 'Toyota HiAce KDH - Demo Fleet 27', 'Grey', 2017, 8, 1, 8, 32000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'HiAce KDH', 'Diesel', 'Automatic', TRUE, 138400, '3000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1028', 'SAMPLE-FLEET-0028', 'Toyota HiAce Commuter - Demo Fleet 28', 'Black', 2018, 12, 0, 10, 35000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'HiAce Commuter', 'Diesel', 'Manual', TRUE, 142600, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1029', 'SAMPLE-FLEET-0029', 'Nissan Caravan - Demo Fleet 29', 'Blue', 2019, 10, 0, 8, 30000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Nissan', 'Caravan', 'Diesel', 'Automatic', TRUE, 146800, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1030', 'SAMPLE-FLEET-0030', 'Mitsubishi Rosa Van - Demo Fleet 30', 'White', 2020, 12, 1, 10, 38000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Mitsubishi', 'Rosa Van', 'Diesel', 'Manual', TRUE, 151000, '4000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1031', 'SAMPLE-FLEET-0031', 'Toyota HiAce Super GL - Demo Fleet 31', 'Silver', 2021, 8, 0, 7, 36000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'HiAce Super GL', 'Diesel', 'Automatic', TRUE, 155200, '2800cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1032', 'SAMPLE-FLEET-0032', 'Toyota HiAce KDH High Roof - Demo Fleet 32', 'Grey', 2022, 9, 0, 8, 34000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'HiAce KDH High Roof', 'Diesel', 'Automatic', TRUE, 159400, '3000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1033', 'SAMPLE-FLEET-0033', 'Nissan Urvan - Demo Fleet 33', 'Black', 2023, 10, 1, 8, 31000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Nissan', 'Urvan', 'Diesel', 'Manual', TRUE, 163600, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(5, 'WP CAA-1034', 'SAMPLE-FLEET-0034', 'Mitsubishi L300 - Demo Fleet 34', 'Blue', 2024, 8, 0, 6, 28000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Mitsubishi', 'L300', 'Diesel', 'Manual', TRUE, 167800, '2500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(6, 'WP CAA-1035', 'SAMPLE-FLEET-0035', 'Toyota Coaster - Demo Fleet 35', 'White', 2025, 22, 0, 20, 55000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Toyota', 'Coaster', 'Diesel', 'Manual', TRUE, 172000, '4000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(6, 'WP CAA-1036', 'SAMPLE-FLEET-0036', 'Mitsubishi Rosa Mini Bus - Demo Fleet 36', 'Silver', 2017, 25, 1, 22, 60000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Mitsubishi', 'Rosa Mini Bus', 'Diesel', 'Manual', TRUE, 176200, '4000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(6, 'WP CAA-1037', 'SAMPLE-FLEET-0037', 'Isuzu Journey Mini Bus - Demo Fleet 37', 'Grey', 2018, 25, 0, 22, 58000.00, 'Ceylinco General Insurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Isuzu', 'Journey Mini Bus', 'Diesel', 'Manual', TRUE, 180400, '5000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(6, 'WP CAA-1038', 'SAMPLE-FLEET-0038', 'Ashok Leyland MiDi Bus - Demo Fleet 38', 'Black', 2019, 25, 0, 22, 52000.00, 'Allianz Insurance Lanka', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Ashok Leyland', 'MiDi Bus', 'Diesel', 'Manual', TRUE, 184600, '4000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(7, 'WP CAA-1039', 'SAMPLE-FLEET-0039', 'Isuzu Luxury Coach - Demo Fleet 39', 'Blue', 2020, 40, 1, 35, 85000.00, 'Union Assurance', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Isuzu', 'Luxury Coach', 'Diesel', 'Manual', TRUE, 188800, '7500cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker'),
+(7, 'WP CAA-1040', 'SAMPLE-FLEET-0040', 'Ashok Leyland Viking Coach - Demo Fleet 40', 'White', 2021, 45, 0, 40, 90000.00, 'Sri Lanka Insurance Corporation', '2025-01-01'::DATE, '2027-12-31'::DATE, 'AVAILABLE'::vehicle_status_type, 'Ashok Leyland', 'Viking Coach', 'Diesel', 'Manual', TRUE, 193000, '6000cc', 'Air Conditioning, Seat Belts, First Aid Kit, GPS Tracker');
 
 -- =========================================================
--- 3. PLACES (150 Real Sri Lankan Tourist Destinations)
+-- 3. PLACES (114 curated Sri Lankan destinations)
+-- Coordinates are approximate destination/landmark coordinates, not survey-grade GPS.
+-- Image URLs are NULL intentionally: do not seed fabricated or unverified image links.
 -- =========================================================
 INSERT INTO place (place_name, image_url, description, latitude, longitude)
-WITH raw_places AS (
-    SELECT unnest(ARRAY[
-        'Sigiriya Rock Fortress', 'Temple of the Sacred Tooth Relic Kandy', 'Galle Dutch Fort', 'Nine Arches Bridge Ella', 
-        'Yala National Park Block 1', 'Mirissa Coconut Tree Hill', 'Little Adams Peak Ella', 'Dambulla Royal Cave Temple', 
-        'Horton Plains National Park & Worlds End', 'Udawalawe National Park', 'Polonnaruwa Ancient City Ruins', 
-        'Anuradhapura Sacred Sacred Bodhi Tree', 'Pidurangala Rock', 'Bentota Golden Beach', 'Unawatuna Beach Lagoon', 
-        'Nuwara Eliya Gregory Lake', 'Royal Botanical Gardens Peradeniya', 'Minneriya National Park Elephant Gathering', 
-        'Arugam Bay Main Surf Point', 'Trincomalee Nilaveli Beach', 'Pigeon Island Marine National Park', 
-        'Adams Peak Sri Pada Mountain', 'Wilpattu National Park', 'Knuckles Mountain Range Deanston', 
-        'Lipton Seat Haputale', 'Tangalle Goyambokka Beach', 'Hikkaduwa Coral Reef Sanctuary', 
-        'Sinharaja Lowland Rainforest Reserve', 'Ella Rock Panoramic Summit', 'St. Clairs Double Falls Talawakele', 
-        'Devon Falls Kotmale', 'Ramboda Falls Tunnel', 'Ambuluwawa Biodiversity Complex Tower', 
-        'Colombo Gangaramaya Temple', 'Colombo Galle Face Green Promenade', 'Colombo Red Mosque Pettah', 
-        'Colombo National Museum', 'Negombo Dutch Canal Lagoon', 'Weligama Bay Surf Reserve', 'Hirisketiya Horseshoe Bay', 
-        'Kabalana Surf Beach Ahangama', 'Talpe Natural Coral Rock Pools', 'Madu River Mangrove Biodiversity Estuary', 
-        'Kosgoda Sea Turtle Conservation Hatchery', 'Kithulgala Kelani River Whitewater Rapids', 
-        'Bopath Ella Waterfall Ratnapura', 'Babarakanda Highest Falls Kalupahana', 'Diyaluma Falls Upper Natural Pools', 
-        'Ravana Falls and Ravana Cave Ella', 'Dunhinda Falls Badulla', 'Meemure Remote Valley Village', 
-        'Sembuwatta Pine Forest Lake Matale', 'Riverston Peak Knuckles Gap', 'Bambarakiri Ella Matale', 
-        'Nalanda Gedige Geometrical Center', 'Aluvihare Rock Temple Cave', 'Dambatenne Tea Factory Haputale', 
-        'Pedro Tea Estate Nuwara Eliya', 'Mackwoods Labookellie Tea Estate', 'Single Tree Hill Summit Nuwara Eliya', 
-        'Hakgala Subtropical Botanic Gardens', 'Gal Oya Senanayake Samudra', 'Kumana Migratory Bird Sanctuary', 
-        'Bundala Ramsar Wetland Reserve', 'Mannar Baobab Tree & Island', 'Jaffna Fort Dutch Ramparts', 
-        'Nallur Kandaswamy Kovil Jaffna', 'Jaffna Casuarina Beach Karainagar', 'Delft Island Wild Horses & Coral Ruins', 
-        'Point Pedro Northernmost Tip', 'Koneswaram Temple Swami Rock Trincomalee', 'Fort Frederick Trincomalee', 
-        'Marble Beach Naval Cove China Bay', 'Kanniya Seven Hot Water Springs', 'Batticaloa Dutch Fort & Lagoon', 
-        'Pasikudah Shallow Coral Coast', 'Kalkudah Bay Beach', 'Kalpitiya Dolphin Lagoon Point', 
-        'Wilpattu Kudiramalai Point', 'Mannar Thalaimannar Pier & Lighthouse', 'Kalutara Bodhiya Temple Shrine', 
-        'Richmond Castle Estate Kalutara', 'Beruwala Barberyn Lighthouse Island', 'Seenigama Devalaya Sea Shrine', 
-        'Galle Maritime Archaeological Museum', 'Martin Wickramasinghe Folk Museum Koggala', 
-        'Koggala Stilt Fishermen Coast', 'Ahangama Lapidary Gem Centers', 'Midigama Skate & Surf Point', 
-        'Matara Star Fort Dutch Rampart', 'Dondra Head Lighthouse Southernmost Point', 'Devinuwara Upulvan Shrine', 
-        'Dickwella Wewurukannala Giant Buddha', 'Hummanaya Natural Blow Hole Kudawella', 'Mulkirigala Rock Monastery', 
-        'Kalametiya Bird Sanctuary Mangroves', 'Ranna Rekawa Turtle Beach Sanctuary', 'Hambantota Botanical Gardens', 
-        'Ridiyagama Open Safari Park', 'Kataragama Sacred Multi-Faith Shrine', 'Sella Kataragama Menik River', 
-        'Kirinda Vihara Ocean Promontory', 'Yala Sithulpawwa Ancient Rock Hermitage', 'Lunugamvehera Reservoir National Park', 
-        'Lahugala Kitulana Elephant Corridor', 'Muhudu Maha Vihara Sand Dunes Arugam', 'Okanda Devalaya Coastal Wilderness', 
-        'Magul Maha Viharaya Historic Ruins', 'Monaragala Maligawila Giant Buddha Statue', 'Buduruwagala Colossal Rock Sculptures Wellawaya', 
-        'Wellawaya Ellewala Hidden Waterfall', 'Ella Secret Waterfall Cave', 'Idalgashinna Ridge Railway Pass', 
-        'Ohiya Misty Mountain Plateau', 'Horton Plains Bakers Waterfalls', 'Hakgala Strict Nature Reserve', 
-        'Nuwara Eliya Moon Plains Agricultural Park', 'Single Tree Forest Reserve', 'Piduruthalagala Highest Summit Observation', 
-        'Mandaram Nuwara Mist Shrouded Valley', 'Hanguranketha Ancient Royal Residence', 'Kandy Wales Park Reservoir Viewpoint', 
-        'Kandy Lake Round Promenade', 'Bahirawakanda Giant White Buddha Monument', 'Udawattakele Forest Sanctuary', 
-        'Hanthana Mountain Range Hiking Route', 'Gadaladeniya Stone Carved Temple', 'Lankatilaka Vihara Rock Ridge', 
-        'Embekke Wood Carving Devalaya', 'Kandy National Gemological Museum', 'Kadugannawa Rock Pass & Incline', 
-        'Alagalla Mountain Range Porcupine Rock', 'Balana Historical Military Fort Pass', 'Pinnawala Elephant Orphanage', 
-        'Millennium Elephant Foundation Kegalle', 'Utuwankande Saradiel Village Rock', 'Belilena Prehistoric Cave Site Kithulgala', 
-        'Welimada Divurumpola Ramayana Shrine', 'Rathna Ella Waterfall Hasalaka', 'Soranabora Historic Reservoir Mahiyanganaya', 
-        'Mahiyangana Sacred Ancient Stupa', 'Dambana Indigenous Vedda Village Settlement', 'Wasgamuwa Central National Park', 
-        'Maduru Oya National Park Reserve', 'Somawathiya Sacred Stupa Flood Plains', 'Lankapatuna Ocean Inlet Stupa', 
-        'Polonnaruwa Gal Vihara Rock Relics', 'Polonnaruwa Parakrama Samudra Lake', 'Medirigiriya Vatadage Historic Site', 
-        'Ritigala Strict Nature Reserve & Monastery', 'Kandalama Lake Ecological Reservoir', 'Namal Uyana Ironwood Forest & Rose Quartz', 
-        'Avukana Standing Monolithic Buddha', 'Resvehera Ancient Carved Buddha', 'Yapahuwa Ancient Fortress Rock Staircase', 
-        'Panduwasnuwara Royal Palace Ruins', 'Kurunegala Ethagala Elephant Rock Monument'
-    ]) AS p_name
-)
-SELECT 
-    p_name,
-    'https://images.unsplash.com/destinations/srilanka/' || lower(replace(regexp_replace(p_name, '[^a-zA-Z0-9 ]', '', 'g'), ' ', '-')) || '.jpg',
-    p_name || ' is one of the premier natural, cultural, and scenic attractions across Sri Lanka, frequently visited by international holidaymakers.',
-    ROUND((5.920000 + (ROW_NUMBER() OVER () * 0.0261) % 3.900000)::NUMERIC, 7),
-    ROUND((79.850000 + (ROW_NUMBER() OVER () * 0.0137) % 1.950000)::NUMERIC, 7)
-FROM raw_places;
+VALUES
+('Sigiriya Rock Fortress', NULL, 'Ancient rock citadel and UNESCO World Heritage Site in the Cultural Triangle.', 7.9570000, 80.7603000),
+('Pidurangala Rock', NULL, 'Rock outcrop north of Sigiriya with views of the surrounding plains.', 7.9698000, 80.7603000),
+('Dambulla Cave Temple', NULL, 'Historic cave temple complex and UNESCO World Heritage Site.', 7.8567000, 80.6492000),
+('Polonnaruwa Ancient City', NULL, 'Archaeological remains of a medieval Sri Lankan capital.', 7.9403000, 81.0188000),
+('Gal Vihara', NULL, 'Rock-cut Buddha statues within the Polonnaruwa archaeological site.', 7.9970000, 81.0030000),
+('Anuradhapura Sacred City', NULL, 'Ancient capital with major Buddhist monuments and archaeological remains.', 8.3114000, 80.4037000),
+('Sri Maha Bodhi', NULL, 'Sacred Bodhi tree shrine in Anuradhapura.', 8.3509000, 80.3964000),
+('Ruwanwelisaya', NULL, 'Major ancient Buddhist stupa in Anuradhapura.', 8.3508000, 80.3960000),
+('Mihintale', NULL, 'Historic Buddhist pilgrimage site near Anuradhapura.', 8.3505000, 80.5110000),
+('Temple of the Sacred Tooth Relic', NULL, 'Historic Buddhist temple in Kandy.', 7.2936000, 80.6413000),
+('Kandy Lake', NULL, 'Historic lake beside the Temple of the Tooth.', 7.2925000, 80.6415000),
+('Royal Botanic Gardens Peradeniya', NULL, 'Botanical gardens near Kandy with extensive tropical plant collections.', 7.2723000, 80.5955000),
+('Bahirawakanda Buddha Statue', NULL, 'Large Buddha statue overlooking Kandy.', 7.2895000, 80.6270000),
+('Embekka Devalaya', NULL, 'Historic shrine known for carved timber pillars.', 7.2470000, 80.5780000),
+('Galle Fort', NULL, 'UNESCO-listed fortified historic town on the southern coast.', 6.0260000, 80.2170000),
+('Galle Lighthouse', NULL, 'Lighthouse within the Galle Fort precinct.', 6.0258000, 80.2180000),
+('Unawatuna Beach', NULL, 'Popular sandy beach near Galle.', 6.0108000, 80.2490000),
+('Jungle Beach Unawatuna', NULL, 'Small coastal cove near Unawatuna.', 6.0065000, 80.2465000),
+('Hikkaduwa Beach', NULL, 'Coastal destination known for surfing and marine activities.', 6.1395000, 80.1010000),
+('Hikkaduwa National Park', NULL, 'Marine protected area with coral reef habitats.', 6.1360000, 80.1030000),
+('Mirissa Beach', NULL, 'Southern coastal beach and seasonal whale-watching departure point.', 5.9467000, 80.4590000),
+('Coconut Tree Hill Mirissa', NULL, 'Coastal viewpoint in Mirissa known for its palm trees.', 5.9448000, 80.4608000),
+('Weligama Bay', NULL, 'Bay popular for beginner surfing.', 5.9740000, 80.4290000),
+('Kabalana Beach', NULL, 'Ahangama-area beach known for surf breaks.', 5.9748000, 80.3650000),
+('Hiriketiya Beach', NULL, 'Small horseshoe-shaped bay near Dikwella.', 5.9650000, 80.7040000),
+('Tangalle Beach', NULL, 'Southern coastal area with long beaches and rocky coves.', 6.0240000, 80.7950000),
+('Bentota Beach', NULL, 'West-coast beach destination with river activities.', 6.4210000, 79.9950000),
+('Madu River', NULL, 'Wetland estuary near Balapitiya known for mangroves.', 6.2760000, 80.0350000),
+('Kosgoda Beach', NULL, 'Coastal area associated with sea turtle conservation.', 6.3330000, 80.0300000),
+('Ella', NULL, 'Hill-country town known for mountain scenery and hiking.', 6.8667000, 81.0466000),
+('Nine Arch Bridge', NULL, 'Historic railway viaduct near Ella.', 6.8768000, 81.0608000),
+('Little Adam''s Peak', NULL, 'Popular hiking summit near Ella.', 6.8715000, 81.0580000),
+('Ella Rock', NULL, 'Hiking viewpoint overlooking Ella.', 6.8670000, 81.0470000),
+('Ravana Falls', NULL, 'Waterfall beside the Ella-Wellawaya road.', 6.8390000, 81.0580000),
+('Diyaluma Falls', NULL, 'High waterfall near Koslanda.', 6.7330000, 81.0320000),
+('Horton Plains National Park', NULL, 'High-altitude protected plateau with cloud forest and grassland.', 6.8020000, 80.8020000),
+('World''s End', NULL, 'Escarpment viewpoint within Horton Plains.', 6.7960000, 80.7980000),
+('Baker''s Falls', NULL, 'Waterfall on the Horton Plains walking trail.', 6.8080000, 80.8070000),
+('Gregory Lake', NULL, 'Lake and recreation area in Nuwara Eliya.', 6.9690000, 80.7820000),
+('Hakgala Botanical Garden', NULL, 'Botanical garden near Nuwara Eliya.', 6.9230000, 80.8190000),
+('Lipton''s Seat', NULL, 'Viewpoint above the Dambatenne tea-growing area.', 6.7700000, 81.0000000),
+('Adisham Bungalow', NULL, 'Historic country house and monastery near Haputale.', 6.7680000, 80.9580000),
+('Adam''s Peak (Sri Pada)', NULL, 'Sacred mountain and pilgrimage destination in the central highlands.', 6.8096000, 80.4994000),
+('Knuckles Conservation Forest', NULL, 'Mountain forest reserve known for biodiversity and trekking.', 7.4500000, 80.8000000),
+('Riverston', NULL, 'Scenic highland area in the Knuckles region.', 7.5200000, 80.7400000),
+('Meemure', NULL, 'Remote village near the Knuckles mountain range.', 7.4330000, 80.8500000),
+('Sinharaja Forest Reserve', NULL, 'UNESCO-listed tropical rainforest reserve.', 6.4050000, 80.5000000),
+('Kitulgala', NULL, 'River-side town known for white-water rafting.', 6.9890000, 80.4180000),
+('Bopath Ella', NULL, 'Waterfall near Kuruwita in the Ratnapura District.', 6.7000000, 80.3850000),
+('Bambarakanda Falls', NULL, 'Sri Lanka''s tallest waterfall near Kalupahana.', 6.7720000, 80.8300000),
+('Udawalawe National Park', NULL, 'National park known for Asian elephant sightings.', 6.4750000, 80.8880000),
+('Yala National Park', NULL, 'National park in the southeast known for wildlife.', 6.3720000, 81.5180000),
+('Bundala National Park', NULL, 'Coastal wetland national park important for migratory birds.', 6.1780000, 81.2050000),
+('Minneriya National Park', NULL, 'National park known for seasonal elephant gatherings.', 8.0380000, 80.8850000),
+('Kaudulla National Park', NULL, 'Dry-zone national park with elephant herds and reservoir habitats.', 8.1350000, 80.8850000),
+('Wilpattu National Park', NULL, 'Large national park in the northwest known for villus and wildlife.', 8.4500000, 80.0000000),
+('Kumana National Park', NULL, 'Eastern national park and important bird habitat.', 6.6000000, 81.7000000),
+('Gal Oya National Park', NULL, 'Protected area around Senanayake Samudraya.', 7.2500000, 81.3500000),
+('Arugam Bay', NULL, 'East-coast surfing destination near Pottuvil.', 6.8400000, 81.8360000),
+('Pasikudah Beach', NULL, 'Shallow bay on the east coast known for calm-water recreation.', 7.9260000, 81.5620000),
+('Nilaveli Beach', NULL, 'Beach north of Trincomalee, close to Pigeon Island.', 8.6930000, 81.1900000),
+('Pigeon Island National Park', NULL, 'Marine national park off Nilaveli with coral reef habitats.', 8.7200000, 81.2050000),
+('Koneswaram Temple', NULL, 'Hindu temple on Swami Rock overlooking Trincomalee harbour.', 8.5710000, 81.2390000),
+('Fort Frederick', NULL, 'Historic fortification at the Trincomalee peninsula.', 8.5720000, 81.2400000),
+('Jaffna Fort', NULL, 'Historic Dutch-era fort in Jaffna town.', 9.6610000, 80.0100000),
+('Nallur Kandaswamy Kovil', NULL, 'Important Hindu temple in Jaffna.', 9.6750000, 80.0250000),
+('Casuarina Beach', NULL, 'Beach on Karainagar Island in the Jaffna District.', 9.7600000, 79.8870000),
+('Delft Island', NULL, 'Island in the Palk Strait known for wild ponies and historic remains.', 9.5200000, 79.6800000),
+('Mannar Baobab Tree', NULL, 'Notable baobab tree on Mannar Island.', 8.9810000, 79.9040000),
+('Kalpitiya Lagoon', NULL, 'Coastal lagoon area known for kite surfing and seasonal dolphin watching.', 8.2300000, 79.7600000),
+('Negombo Lagoon', NULL, 'Large coastal lagoon with fishing and mangrove habitats.', 7.1900000, 79.8400000),
+('Negombo Dutch Canal', NULL, 'Historic canal passing through Negombo and the western coastal region.', 7.2100000, 79.8400000),
+('Colombo National Museum', NULL, 'National museum documenting Sri Lankan history and culture.', 6.9100000, 79.8600000),
+('Gangaramaya Temple', NULL, 'Buddhist temple complex in Colombo near Beira Lake.', 6.9167000, 79.8563000),
+('Independence Memorial Hall', NULL, 'National monument in Colombo commemorating independence.', 6.9065000, 79.8680000),
+('Galle Face Green', NULL, 'Seafront urban park in central Colombo.', 6.9270000, 79.8440000),
+('Jami Ul-Alfar Mosque', NULL, 'Historic red-and-white mosque in Pettah, Colombo.', 6.9350000, 79.8500000),
+('Dambatenne Tea Factory', NULL, 'Tea factory near Haputale associated with the Lipton tea-growing area.', 6.7700000, 80.9700000),
+('Nuwara Eliya Post Office', NULL, 'Historic colonial-era post office in Nuwara Eliya.', 6.9700000, 80.7680000),
+('Ambuluwawa Tower', NULL, 'Observation tower on Ambuluwawa mountain near Gampola.', 7.1450000, 80.5360000),
+('Pinnawala Elephant Orphanage', NULL, 'Elephant care facility in Pinnawala; check current visitor and welfare guidance.', 7.3000000, 80.3890000),
+('Mulkirigala Raja Maha Viharaya', NULL, 'Ancient rock temple with cave shrines near Tangalle.', 6.0840000, 80.7370000),
+('Hummanaya Blow Hole', NULL, 'Natural blow hole near Kudawella on the southern coast.', 5.9770000, 80.7500000),
+('Kataragama Sacred City', NULL, 'Multi-faith pilgrimage town in the southeast.', 6.4140000, 81.3330000),
+('Dondra Head Lighthouse', NULL, 'Lighthouse near the southernmost point of mainland Sri Lanka.', 5.9330000, 80.5940000),
+('Matara Star Fort', NULL, 'Historic star-shaped fort in Matara.', 5.9480000, 80.5350000),
+('Jaffna Public Library', NULL, 'Landmark public library in Jaffna town.', 9.6650000, 80.0100000),
+('Ritigala Archaeological Site', NULL, 'Ancient monastic complex within a forest reserve.', 8.1050000, 80.6650000),
+('Avukana Buddha Statue', NULL, 'Large standing Buddha statue near Kekirawa.', 8.0110000, 80.5130000),
+('Yapahuwa Rock Fortress', NULL, 'Medieval rock fortress known for its ornate stone staircase.', 7.8180000, 80.3060000),
+('Medirigiriya Vatadage', NULL, 'Ancient circular relic house in the Polonnaruwa District.', 8.0380000, 80.9850000),
+('Aluvihare Rock Temple', NULL, 'Historic Buddhist cave temple near Matale.', 7.5000000, 80.6020000),
+('Nalanda Gedige', NULL, 'Medieval stone shrine near Matale.', 7.6730000, 80.6520000),
+('Koggala Lake', NULL, 'Coastal lake near Galle with islands and mangrove habitats.', 5.9980000, 80.3300000),
+('Martin Wickramasinghe Folk Museum', NULL, 'Museum in Koggala dedicated to Sri Lankan folk culture and literature.', 5.9970000, 80.3300000),
+('Budduruwagala', NULL, 'Rock-carved Buddhist figures near Wellawaya.', 6.7370000, 81.0960000),
+('Dunhinda Falls', NULL, 'Waterfall near Badulla reached by a forest footpath.', 7.0050000, 81.0570000),
+('Sembuwatta Lake', NULL, 'Lake in the Elkaduwa area surrounded by tea estates.', 7.5480000, 80.6740000),
+('Hanthana Mountain Range', NULL, 'Mountain range southwest of Kandy with hiking routes.', 7.2670000, 80.6200000),
+('Udawattakele Forest Reserve', NULL, 'Forest reserve above Kandy with walking trails and birdlife.', 7.2990000, 80.6420000),
+('Bolgoda Lake', NULL, 'Large freshwater lake system south of Colombo.', 6.7600000, 79.9200000),
+('Kalutara Bodhiya', NULL, 'Buddhist shrine near the Kalu Ganga bridge in Kalutara.', 6.5850000, 79.9600000),
+('Richmond Castle', NULL, 'Historic mansion near Kalutara with early twentieth-century architecture.', 6.5850000, 79.9600000),
+('Beruwala Lighthouse', NULL, 'Lighthouse on Barberyn Island near Beruwala.', 6.4630000, 79.9820000),
+('Belilena Cave', NULL, 'Prehistoric cave site near Kitulgala.', 6.9890000, 80.4140000),
+('Pahiyangala (Fa-Hien Cave)', NULL, 'Large prehistoric cave site near Bulathsinhala.', 6.6500000, 80.1900000),
+('Maduru Oya National Park', NULL, 'Dry-zone national park with reservoir landscapes and wildlife.', 7.7500000, 81.1500000),
+('Somawathiya Stupa', NULL, 'Buddhist stupa in the Somawathiya National Park area.', 8.1000000, 81.1800000),
+('Lankapatuna Samudragiri Viharaya', NULL, 'Historic Buddhist temple site near the eastern coast.', 8.4700000, 81.2800000),
+('Kudumbigala Monastery', NULL, 'Ancient forest monastery near Panama and Kumana.', 6.7000000, 81.7200000),
+('Okanda Murugan Temple', NULL, 'Hindu shrine on the southeastern coast near Kumana.', 6.6500000, 81.7300000),
+('Magul Maha Viharaya', NULL, 'Archaeological Buddhist site near Pottuvil.', 6.8500000, 81.7500000),
+('Maligawila Buddha Statue', NULL, 'Large standing Buddha statue near Okkampitiya.', 6.8750000, 81.3500000),
+('Ridiyagama Safari Park', NULL, 'Open-range safari park near Hambantota.', 6.2000000, 81.0500000);
+
 
 -- =========================================================
--- 4. ACTIVITIES (100 Authentic Sri Lankan Tour Activities)
+-- 4. ACTIVITIES (114 practical Sri Lankan activities)
+-- Phone is NULL because no verified operator phone number is supplied.
+-- Descriptions avoid claiming SLTDA certification for unnamed providers.
 -- =========================================================
 INSERT INTO activity (activity_name, phone, description)
-WITH raw_activities AS (
-    SELECT unnest(ARRAY[
-        'Guided Sunrise Hike to Sigiriya Rock', 'Pidurangala Rock Sunrise Photography Excursion', 
-        'Dambulla Cave Temple Guided Cultural Walk', 'Temple of the Tooth Relic Evening Theva Ceremony', 
-        'Kandy Lake Round Heritage Stroll', 'Kandyan Cultural Dance and Drumming Performance', 
-        'Royal Botanical Gardens Flora Guided Tour', 'Knuckles High Forest Wilderness Trekking', 
-        'Hanthana Ridge Tea Plantation Hiking', 'Pinnawala Elephant Bathing Observation', 
-        'Ella Nine Arches Bridge Train Spotting Walk', 'Little Adams Peak Sunset Hike', 
-        'Ella Rock Guided Challenge Hike', 'Ravana Mega Zipline Adventure Experience', 
-        'Diyaluma Waterfall Upper Infinity Pools Bathing', 'Scenic Highland Train Ride Kandy to Ella', 
-        'Nuwara Eliya Tea Plucking & Factory Cupping', 'Horton Plains & Worlds End Morning Nature Trek', 
-        'Bakers Falls Forest Trail', 'Gregory Lake Jet Ski & Speedboat Cruising', 
-        'Hakgala Subtropical Gardens Exploration', 'Liptons Seat Early Morning Sunrise Jeep Safari', 
-        'Kithulgala White Water Rafting Class III Rapids', 'Kelani River Rainforest Canyoneering & Cliff Jumps', 
-        'Prehistoric Belilena Cave Archaeological Tour', 'Yala National Park Afternoon Leopard Safari', 
-        'Yala Early Dawn Full Day Wildlife Expedition', 'Udawalawe Elephant Sanctuary Open Jeep Safari', 
-        'Minneriya Wild Elephant Gathering Jeep Safari', 'Kaudulla National Park Elephant Corridor Safari', 
-        'Hurulu Eco Park Dry Zone Wildlife Safari', 'Wilpattu Safari Tracking Sloth Bears and Leopards', 
-        'Mirissa Whale and Dolphin Watching Cruise', 'Private Catamaran Sailing in Mirissa Bay', 
-        'Deep Sea Sport Fishing off Mirissa Coast', 'Weligama Beginner Surf Lesson with Local Pro', 
-        'Midigama Intermediate Reef Break Surfing', 'Ahangama Stilt Fishing Demonstration and Photoshoot', 
-        'Kabalana High Wave Surfing Excursion', 'Hirisketiya Bay Surf and Yoga Session', 
-        'Galle Fort Historical Ramparts Guided Walking Tour', 'Dutch Heritage Architecture and Museum Walk Galle', 
-        'Unawatuna Jungle Beach Snorkeling Expedition', 'Hikkaduwa Glass Bottom Boat Coral Reef Tour', 
-        'Sea Turtle Hatchery and Sanctuary Educational Visit', 'Madu River Mangrove Biodiversity Motorboat Safari', 
-        'Cinnamon Island Peeling & Processing Demo', 'Bentota River Water Sports and Banana Boat Ride', 
-        'Bentota Coral Reef Scuba Diving Experience', 'Traditional Southern Ayurvedic Full Body Herbal Massage', 
-        'Shirodhara Wellness & Stress Relief Treatment', 'Steam Bath & Herbal Inhalation Therapy', 
-        'Private Sunset Yoga & Meditation on the Beach', 'Authentic Sri Lankan Spice Cooking Masterclass', 
-        'Pettah Street Food and Market Walking Tour', 'Colombo Open Deck Vintage Double Decker City Tour', 
-        'Gangaramaya Temple and Seema Malaka Tour', 'Colombo National Museum Curated History Tour', 
-        'Galle Face Green Kite Flying & Street Food Evening', 'Negombo Lagoon Morning Fishermen Boat Tour', 
-        'Hamilton Dutch Canal Kayaking Adventure', 'Pigeon Island Marine Sanctuary Coral Snorkeling', 
-        'Nilaveli Beach Scuba Diving Expedition', 'Koneswaram Temple Swami Rock Cliff Walk', 
-        'Trincomalee Deep Harbour Whale Watching Voyage', 'Kanniya Natural Hot Spring Bathing', 
-        'Pasikudah Calm Bay Stand Up Paddleboarding', 'Arugam Bay World Tour Point Surfing', 
-        'Kumana National Park Bird Watching Safari', 'Arugam Bay Lagoon Safari to Elephant Rock', 
-        'Anuradhapura Sacred City UNESCO Cycling Tour', 'Ruwanwelisaya and Sri Maha Bodhi Pilgrimage Walk', 
-        'Mihintale Sacred Cradle of Buddhism Staircase Climb', 'Polonnaruwa Ancient Citadel Royal Palace Tour', 
-        'Polonnaruwa Gal Vihara Monolithic Sculpture Study', 'Parakrama Samudra Breezy Embankment Sunset Walk', 
-        'Ritigala Forest Hermitage Ecological Monastery Trek', 'Kalpitiya Bar Reef Scuba Diving Adventure', 
-        'Kalpitiya Kite Surfing Flatwater Lagoon Lesson', 'Kalpitiya Spinner Dolphin Watching Boat Tour', 
-        'Wilpattu Kudiramalai Red Sand Coast Safari Walk', 'Jaffna Fort Sunset Rampart Walking Tour', 
-        'Nallur Kandaswamy Temple Evening Puja Ritual', 'Delft Island Wild Pony & Baobab Tree Excursion', 
-        'Jaffna Crab Curry Traditional Dining Experience', 'Karainagar Casuarina Beach Swimming & Sunbathing', 
-        'Point Pedro & Northern Coastline Scenic Drive', 'Keerimalai Natural Sacred Freshwater Spring Bath', 
-        'Mannar Island Flamingo & Migratory Bird Watching', 'Adams Bridge Thalaimannar Sand Dunes Expedition', 
-        'Sinharaja Virgin Rainforest Biodiversity Trekking', 'Endemic Bird Watching Guided Trail Sinharaja', 
-        'Meemure Isolated Mountain Village Trek', 'Riverston Mini Worlds End Windy Gap Trek', 
-        'Sembuwatta Natural Spring Lake Excursion', 'Bambarakanda Highest Falls Base Pool Hike', 
-        'Dunhinda Falls Misty Spray Forest Hike', 'Maduru Oya Indigenous Vedda Cultural Exchange', 
-        'Ambuluwawa Cone Tower 360 Degree Aerial Ascent', 'Gal Oya Boat Safari Watching Swimming Elephants'
-    ]) AS a_name
-)
-SELECT 
-    a_name,
-    '+94 77 ' || (1000000 + (ROW_NUMBER() OVER () * 8641) % 8999999)::TEXT,
-    'Certified excursion: ' || a_name || ' supervised by local SLTDA licensed guides and instructors.'
-FROM raw_activities;
+VALUES
+('Guided visit to Sigiriya Rock Fortress', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Pidurangala Rock hike and viewpoint visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Guided visit to Dambulla Cave Temple', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Polonnaruwa archaeological city cycling tour', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Guided visit to Gal Vihara', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Anuradhapura ancient city heritage tour', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Visit to Sri Maha Bodhi shrine', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Visit to Ruwanwelisaya stupa', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Mihintale heritage and pilgrimage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Guided visit to the Temple of the Sacred Tooth Relic', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kandy Lake heritage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Peradeniya Royal Botanic Gardens visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Visit to Bahirawakanda Buddha Statue', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Visit to Embekka Devalaya timber carvings', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Galle Fort walking tour', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Galle Lighthouse and rampart walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Unawatuna beach visit and swimming', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Walk to Jungle Beach, Unawatuna', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Hikkaduwa beach and surf lesson', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Snorkelling at Hikkaduwa marine area (conditions permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Mirissa coastal visit and seasonal whale-watching excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Coconut Tree Hill viewpoint visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Weligama beginner surf lesson', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ahangama surf session at Kabalana', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Hiriketiya beach and surf session', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Tangalle coastal and beach visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Bentota beach and water-sports activity', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Guided Madu River mangrove boat excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kosgoda turtle conservation centre visit (operator permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ella town and tea-country walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Visit to Nine Arch Bridge', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Little Adam''s Peak hike', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ella Rock guided hike', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ravana Falls viewpoint visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Diyaluma Falls hike with local guide', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Horton Plains National Park nature trail', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('World''s End viewpoint hike', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Baker''s Falls trail walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Gregory Lake visit and lakeside recreation', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Hakgala Botanical Garden visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Lipton''s Seat sunrise viewpoint excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Adisham Bungalow visit (opening days permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Sri Pada pilgrimage hike (seasonal)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Knuckles Conservation Forest guided trek', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Riverston and Pitawala Pathana viewpoint excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Meemure village and countryside visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Sinharaja rainforest guided nature walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kitulgala white-water rafting with licensed operator', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Bopath Ella waterfall visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Bambarakanda Falls nature walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Udawalawe National Park jeep safari with licensed operator', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Yala National Park jeep safari with licensed operator', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Bundala National Park birdwatching safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Minneriya National Park wildlife safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kaudulla National Park wildlife safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Wilpattu National Park jeep safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kumana National Park birdwatching safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Gal Oya reservoir boat safari with licensed operator', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Arugam Bay surf lesson', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Pasikudah beach and shallow-water recreation', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Nilaveli beach visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Pigeon Island marine park snorkelling (permit and sea conditions permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Koneswaram Temple heritage visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Fort Frederick walking visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Jaffna Fort heritage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Nallur Kandaswamy Kovil visit (respecting worship times)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Casuarina Beach visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Delft Island guided island excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Mannar baobab tree visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kalpitiya lagoon kite-surfing lesson with qualified operator', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Negombo Lagoon guided boat excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Negombo Dutch Canal heritage boat trip', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Colombo National Museum visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Gangaramaya Temple and Beira Lake visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Independence Memorial Hall visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Galle Face Green evening walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Jami Ul-Alfar Mosque exterior and Pettah heritage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Dambatenne Tea Factory visit (advance confirmation required)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Nuwara Eliya town heritage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ambuluwawa Tower visit (weather and access permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Pinnawala Elephant Orphanage visit (review current welfare and visitor policy)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Mulkirigala rock temple visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Hummanaya Blow Hole viewpoint visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kataragama sacred sites visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Dondra Head Lighthouse area visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Matara Star Fort heritage walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Jaffna Public Library visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ritigala archaeological and nature trail (access rules permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Avukana Buddha Statue visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Yapahuwa Rock Fortress climb', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Medirigiriya Vatadage archaeological visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Aluvihare Rock Temple visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Nalanda Gedige heritage visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Koggala Lake guided boat excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Martin Wickramasinghe Folk Museum visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Budduruwagala rock sculptures visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Dunhinda Falls guided nature walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Sembuwatta Lake visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Hanthana mountain hiking excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Udawattakele Forest Reserve nature walk', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Bolgoda Lake boat excursion', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kalutara Bodhiya visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Richmond Castle heritage visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Beruwala Barberyn Lighthouse boat visit (access permitting)', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Belilena Cave guided archaeological visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Pahiyangala cave site visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Maduru Oya National Park safari', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Somawathiya Stupa pilgrimage visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Lankapatuna Samudragiri Viharaya visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Kudumbigala monastery and nature trail', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Okanda Murugan Temple visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Magul Maha Viharaya archaeological visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Maligawila Buddha Statue visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.'),
+('Ridiyagama Safari Park visit', NULL, 'Suggested visitor activity in Sri Lanka. Availability, permits, operator qualifications, weather and seasonal conditions should be confirmed before booking.');
 
 -- =========================================================
 -- 5. PLACE-ACTIVITY JUNCTION
+-- The activity list follows the destination list in the same order.
 -- =========================================================
--- Map activities deterministically to destinations based on geographic proximity/affinity
 INSERT INTO place_activity (place_id, activity_id)
-SELECT 
-    1 + ((i * 3 + j * 7) % 150) AS place_id,
-    i AS activity_id
-FROM generate_series(1, 100) AS s(i)
-CROSS JOIN generate_series(1, 3) AS c(j);
+SELECT p.place_id, a.activity_id
+FROM place p
+JOIN activity a ON a.activity_id = p.place_id
+WHERE p.place_id <= (SELECT COUNT(*) FROM activity);
+
 
 -- =========================================================
--- 6. PACKAGES (20 Curated All-Island Itineraries)
+-- 6. PACKAGES (20 Sri Lanka itineraries; sample catalogue data)
+-- Weather is deliberately not represented as a fixed forecast.
+-- Images are NULL until verified image assets are supplied.
 -- =========================================================
 INSERT INTO package (title, type, days, description, weather, image_url, availability_status)
 VALUES
-('Classic Ceylon Highlights Explorer', 'CULTURAL HERITAGE', '7 DAYS', 'Discover the Cultural Triangle, Kandy tooth relic temple, scenic tea plantations, and Colombo heritage sites.', '{"temp_c": 28, "condition": "Sunny", "humidity": 70}', 'https://images.unsplash.com/package-heritage-7d.jpg', 'AVAILABLE'),
-('Grand Cultural Triangle & Ancient Kingdoms', 'CULTURAL HERITAGE', '14 DAYS', 'An extensive historical journey traversing Anuradhapura, Polonnaruwa, Sigiriya, Dambulla, and Kandy.', '{"temp_c": 30, "condition": "Warm", "humidity": 65}', 'https://images.unsplash.com/package-heritage-14d.jpg', 'AVAILABLE'),
-('Heritage & Royal Cities Deep Dive', 'CULTURAL HERITAGE', '21 DAYS', 'Deep cultural immersion featuring ancient temples, Dutch colonial forts, traditional arts, and historic monasteries.', '{"temp_c": 29, "condition": "Sunny Intervals", "humidity": 68}', 'https://images.unsplash.com/package-heritage-21d.jpg', 'AVAILABLE'),
-('Sri Lanka Epic Antiquity Odyssey', 'CULTURAL HERITAGE', '28 DAYS', 'The ultimate month-long expedition covering all 8 UNESCO World Heritage Sites from Jaffna to Galle.', '{"temp_c": 29, "condition": "Tropical Breezy", "humidity": 72}', 'https://images.unsplash.com/package-heritage-28d.jpg', 'AVAILABLE'),
-
-('Knuckles & Peaks Highland Adventure', 'ADVENTURE', '7 DAYS', 'Trekking through the misty Knuckles Range, Ella Rock, Little Adams Peak, and Kithulgala rapids.', '{"temp_c": 22, "condition": "Breezy", "humidity": 80}', 'https://images.unsplash.com/package-adventure-7d.jpg', 'AVAILABLE'),
-('Wild Trails & Highland Adrenaline', 'ADVENTURE', '14 DAYS', 'Whitewater rafting, waterfall abseiling, jungle hiking, high mountain passes, and surfing southern breaks.', '{"temp_c": 24, "condition": "Partly Cloudy", "humidity": 75}', 'https://images.unsplash.com/package-adventure-14d.jpg', 'AVAILABLE'),
-('Active Island Hiker & Explorer Expedition', 'ADVENTURE', '21 DAYS', 'All-island trekking covering Adams Peak, Horton Plains, Sinharaja rainforest, and coastal kite surf lessons.', '{"temp_c": 25, "condition": "Tropical", "humidity": 76}', 'https://images.unsplash.com/package-adventure-21d.jpg', 'AVAILABLE'),
-('Ultimate Sri Lanka 28-Day Extreme Expedition', 'ADVENTURE', '28 DAYS', 'Four weeks of trekking, scuba diving coral atolls, surfing, caving, canyoning, and off-road biking.', '{"temp_c": 26, "condition": "Clear Sky", "humidity": 70}', 'https://images.unsplash.com/package-adventure-28d.jpg', 'AVAILABLE'),
-
-('Ayurvedic Rejuvenation & Beach Retreat', 'WELLNESS & AYURVEDA', '7 DAYS', 'Daily Panchakarma treatments, seaside yoga at sunrise, organic herbal meals, and calm meditation sessions.', '{"temp_c": 29, "condition": "Sunny", "humidity": 78}', 'https://images.unsplash.com/package-wellness-7d.jpg', 'AVAILABLE'),
-('Holistic Herbal Healing Sanctuary', 'WELLNESS & AYURVEDA', '14 DAYS', 'Two weeks of therapeutic detox, doctor consultations, herbal oil baths, Shirodhara, and mindful silence.', '{"temp_c": 28, "condition": "Mild Tropical", "humidity": 75}', 'https://images.unsplash.com/package-wellness-14d.jpg', 'AVAILABLE'),
-('Traditional Ceylon Mind-Body Transformation', 'WELLNESS & AYURVEDA', '21 DAYS', 'Extensive curative Ayurvedic treatments supervised by indigenous doctors in tranquil southern nature estates.', '{"temp_c": 28, "condition": "Warm", "humidity": 74}', 'https://images.unsplash.com/package-wellness-21d.jpg', 'AVAILABLE'),
-('Total Zen & Rebirth Longstay Wellness', 'WELLNESS & AYURVEDA', '28 DAYS', 'A month-long revitalizing sanctuary program balancing internal doshas, nutrition, meditation, and rest.', '{"temp_c": 27, "condition": "Tropical Calms", "humidity": 72}', 'https://images.unsplash.com/package-wellness-28d.jpg', 'AVAILABLE'),
-
-('Southern Coastline & Coral Reef Escape', 'BEACH SIDE', '7 DAYS', 'Golden sand beaches of Mirissa, Unawatuna, Bentota, and Hiriketiya, paired with fresh seafood dining.', '{"temp_c": 31, "condition": "Sunny & Humid", "humidity": 82}', 'https://images.unsplash.com/package-beach-7d.jpg', 'AVAILABLE'),
-('Sun, Surf & Tropical Sands Round-Trip', 'BEACH SIDE', '14 DAYS', 'Surfing at Weligama, diving at Hikkaduwa, relaxing in Tangalle, and whale watching at Mirissa.', '{"temp_c": 30, "condition": "Sunny", "humidity": 80}', 'https://images.unsplash.com/package-beach-14d.jpg', 'AVAILABLE'),
-('All-Coastline Lagoon & Beach Explorer', 'BEACH SIDE', '21 DAYS', 'From southern coves to eastern surf shores in Arugam Bay and pristine white sands of Nilaveli.', '{"temp_c": 30, "condition": "Sunny Clear", "humidity": 77}', 'https://images.unsplash.com/package-beach-21d.jpg', 'AVAILABLE'),
-
-('Little England & Cloud Forest Tea Trail', 'HILL COUNTRY', '7 DAYS', 'Nuwara Eliya colonial estates, misty tea factory tours, cascading waterfalls, and scenic hill country trains.', '{"temp_c": 16, "condition": "Chilly & Misty", "humidity": 88}', 'https://images.unsplash.com/package-hill-7d.jpg', 'AVAILABLE'),
-('Grand Mist, Waterfalls & Highland Peaks', 'HILL COUNTRY', '14 DAYS', 'Extended retreat through Kandy, Nuwara Eliya, Haputale, Ella, and Ohiya misty mountain passes.', '{"temp_c": 18, "condition": "Misty", "humidity": 85}', 'https://images.unsplash.com/package-hill-14d.jpg', 'AVAILABLE'),
-
-('Big Four Wildlife Safari Quick Circuit', 'SAFARI', '7 DAYS', 'Spotting wild leopards in Yala, elephants in Udawalawe, and blue whales off the coast of Mirissa.', '{"temp_c": 31, "condition": "Dry & Sunny", "humidity": 65}', 'https://images.unsplash.com/package-safari-7d.jpg', 'AVAILABLE'),
-('Wild Sri Lanka Leopards, Elephants & Birds', 'SAFARI', '14 DAYS', 'Extensive jeep safaris in Yala, Wilpattu, Minneriya, Bundala, and deep boat safaris in Gal Oya.', '{"temp_c": 32, "condition": "Dry Sunny", "humidity": 62}', 'https://images.unsplash.com/package-safari-14d.jpg', 'AVAILABLE'),
-('Grand Wilderness & Marine Life Safari Odyssey', 'SAFARI', '21 DAYS', 'The premier nature expedition covering terrestrial predator tracking and deep ocean marine sanctuaries.', '{"temp_c": 30, "condition": "Sunny", "humidity": 66}', 'https://images.unsplash.com/package-safari-21d.jpg', 'AVAILABLE');
+('Cultural Triangle Essentials', 'CULTURAL HERITAGE', '7 DAYS', 'A seven-day route covering Sigiriya, Dambulla, Polonnaruwa and Kandy, with time for major archaeological and cultural sites.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Ancient Capitals and Sacred Cities', 'CULTURAL HERITAGE', '14 DAYS', 'A two-week heritage journey through Anuradhapura, Mihintale, Dambulla, Sigiriya, Polonnaruwa and Kandy.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Heritage, Temples and the Southern Forts', 'CULTURAL HERITAGE', '21 DAYS', 'A longer cultural circuit linking the Cultural Triangle, Kandy, Colombo and Galle Fort.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Sri Lankan Heritage Island Circuit', 'CULTURAL HERITAGE', '28 DAYS', 'A four-week island journey combining the ancient cities, Kandy, Jaffna, Colombo and the southern heritage coast.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Ella and Knuckles Hiking Escape', 'ADVENTURE', '7 DAYS', 'A week of guided hikes around Ella, Little Adam''s Peak, Nine Arch Bridge and selected Knuckles-area trails.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Rainforest, Rivers and Mountain Trails', 'ADVENTURE', '14 DAYS', 'An active itinerary combining Kitulgala rafting, Sinharaja rainforest walks, Ella and central highland trails.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Highland Trekking and Waterfall Trail', 'ADVENTURE', '21 DAYS', 'A three-week route through Adam''s Peak, Horton Plains, Ella, Diyaluma and the Knuckles region.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Sri Lanka Active Nature Expedition', 'ADVENTURE', '28 DAYS', 'A four-week nature-focused journey combining hiking, rafting, rainforest visits and selected coastal activities.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Southern Coast Relaxation', 'WELLNESS & AYURVEDA', '7 DAYS', 'A relaxed coastal stay around Bentota, Galle and Unawatuna, with optional yoga and visits to established wellness centres.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Ayurveda and Coastal Retreat', 'WELLNESS & AYURVEDA', '14 DAYS', 'A two-week slow-travel itinerary on the southern and western coast, with optional treatments arranged through qualified local providers.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Mindful Island Stay', 'WELLNESS & AYURVEDA', '21 DAYS', 'A three-week relaxed itinerary combining coastal stays, botanical gardens, gentle walks and optional wellness sessions.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Extended Wellness and Nature Break', 'WELLNESS & AYURVEDA', '28 DAYS', 'A four-week flexible stay combining the southern coast, hill-country scenery and optional wellness activities.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Southern Beaches and Heritage', 'BEACH SIDE', '7 DAYS', 'A coastal route covering Bentota, Galle, Unawatuna, Weligama and Mirissa.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Surf Coast and East Coast Beaches', 'BEACH SIDE', '14 DAYS', 'A two-week beach itinerary linking Weligama, Ahangama, Mirissa and seasonal east-coast stops such as Arugam Bay.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Island Coastline Explorer', 'BEACH SIDE', '21 DAYS', 'A three-week coastal journey combining southern beaches with Trincomalee, Nilaveli, Pasikudah and the east coast.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Nuwara Eliya and Ella Hill Country', 'HILL COUNTRY', '7 DAYS', 'A week among tea estates, waterfalls and highland towns, including Nuwara Eliya, Haputale and Ella.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Central Highlands Scenic Journey', 'HILL COUNTRY', '14 DAYS', 'A two-week route through Kandy, Nuwara Eliya, Horton Plains, Haputale and Ella.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Udawalawe and Yala Wildlife Circuit', 'SAFARI', '7 DAYS', 'A wildlife-focused route with guided jeep safaris in Udawalawe and Yala, subject to park rules and availability.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('National Parks and Birdlife Expedition', 'SAFARI', '14 DAYS', 'A two-week nature itinerary featuring Wilpattu, Minneriya, Kaudulla, Bundala and Kumana where seasonal conditions allow.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE'),
+('Sri Lanka Wildlife and Nature Journey', 'SAFARI', '21 DAYS', 'A three-week route combining selected national parks, wetland habitats and the Gal Oya region, with licensed local safari operators.', '{"note":"Sri Lanka weather varies by region and season; check a current forecast before travel."}', NULL, 'AVAILABLE');
 
 -- =========================================================
 -- 7. PACKAGE-PLACE ROUTING
 -- =========================================================
--- Connect packages to places systematically across their required day counts
+-- Seed indicative destination stops for each package. These are demo associations, not a turn-by-turn route.
 INSERT INTO package_place (package_id, place_id, day_number, latitude, longitude)
 SELECT 
     sub.package_id,
@@ -267,7 +376,14 @@ SELECT
 FROM (
     SELECT 
         pkg.package_id,
-        1 + (((pkg.package_id * 7) + d * 5) % 150) AS place_id,
+        CASE
+            WHEN pkg.package_id BETWEEN 1 AND 4 THEN 1 + (((pkg.package_id * 3 + d - 1) % 15))
+            WHEN pkg.package_id BETWEEN 5 AND 8 THEN 30 + (((pkg.package_id * 2 + d - 1) % 19))
+            WHEN pkg.package_id BETWEEN 9 AND 12 THEN 16 + (((pkg.package_id * 2 + d - 1) % 14))
+            WHEN pkg.package_id BETWEEN 13 AND 15 THEN 16 + (((pkg.package_id * 3 + d - 1) % 14))
+            WHEN pkg.package_id BETWEEN 16 AND 17 THEN 30 + (((pkg.package_id * 3 + d - 1) % 19))
+            ELSE 49 + (((pkg.package_id * 2 + d - 1) % 12))
+        END AS place_id,
         d AS day_number
     FROM package pkg
     CROSS JOIN LATERAL (
@@ -285,7 +401,7 @@ FROM (
 JOIN place p ON p.place_id = sub.place_id;
 
 -- =========================================================
--- 8. USERS (1,500 Foreign Inbound Travelers + 10 Admins)
+-- 8. USERS (1,500 synthetic international customer profiles + 10 demo admins)
 -- =========================================================
 -- Administrative staff
 INSERT INTO "user" (
@@ -334,9 +450,9 @@ SELECT
 FROM generate_series(1, 1500) AS s(i);
 
 -- =========================================================
--- 9. BOOKINGS (2,200 High-Volume Agency Bookings)
+-- 9. BOOKINGS (2,200 synthetic sample bookings)
 -- =========================================================
--- Distributes across 2024-01-01 to 2026-10-01 with natural seasonal weight
+-- Sample historical/future bookings distributed across 2024-01-01 to 2026-10-01.
 INSERT INTO booking (
     user_id, customer_name, contact_platform, contact_number, tour_type, 
     category_id, vehicle_id, start_date, end_date, pickup_time, 
@@ -372,10 +488,10 @@ SELECT
     CASE WHEN i % 5 = 0 THEN 1 WHEN i % 9 = 0 THEN 2 ELSE 0 END,
     CASE WHEN i % 5 = 0 THEN '7' WHEN i % 9 = 0 THEN '5, 10' ELSE NULL END,
     b_price,
-    CASE WHEN i % 7 = 0 THEN 50.00 ELSE 0.00 END,
-    'Flight arrival tracking required. Need English speaking chauffeur-guide.',
-    'Excited for cultural sites, coastal swimming, and tea estate tours.',
-    'VIP treatment recommended. Standard fleet allocation checked.',
+    CASE WHEN i % 7 = 0 THEN 5000.00 ELSE 0.00 END,
+    'Sample request: confirm arrival time and preferred language with the customer.',
+    'Sample customer preference: cultural attractions, coastal stops and hill-country scenery.',
+    'Sample admin note: confirm vehicle suitability and availability before approval.',
     b_booked_date,
     b_status,
     -- Milestone Timestamps
@@ -404,8 +520,16 @@ CROSS JOIN LATERAL (
         vars.b_start_raw AS b_start,
         vars.b_start_raw + vars.b_days AS b_end,
         vars.b_start_raw - (10 + (i % 35)) AS b_booked_date,
-        1 + (i % 7) AS b_cat_id,
         1 + (i % 40) AS b_veh_id,
+        CASE
+            WHEN (1 + (i % 40)) <= 8 THEN 1
+            WHEN (1 + (i % 40)) <= 15 THEN 2
+            WHEN (1 + (i % 40)) <= 21 THEN 3
+            WHEN (1 + (i % 40)) <= 26 THEN 4
+            WHEN (1 + (i % 40)) <= 34 THEN 5
+            WHEN (1 + (i % 40)) <= 38 THEN 6
+            ELSE 7
+        END AS b_cat_id,
         CASE 
             -- Chronological progression based on end date vs simulation boundary (2026-10-01)
             WHEN vars.b_start_raw + vars.b_days < '2026-09-01'::DATE THEN
@@ -415,17 +539,32 @@ CROSS JOIN LATERAL (
             ELSE 
                 (ARRAY['CONFIRMED', 'QUOTED', 'ACCEPTED', 'PENDING'])[1 + (i % 4)]::booking_status_type
         END AS b_status,
-        (vars.b_days * (85.00 + (i % 6) * 35.00))::NUMERIC(10,2) AS b_price
+        (vars.b_days * (
+            SELECT v.price_per_day
+            FROM vehicle v
+            WHERE v.vehicle_id = 1 + (i % 40)
+        ))::NUMERIC(10,2) AS b_price
 ) AS derived;
 
 -- =========================================================
 -- 10. BOOKING-PACKAGE JUNCTION
 -- =========================================================
 INSERT INTO booking_package (booking_id, package_id)
-SELECT 
+SELECT
     b.booking_id,
-    1 + (b.booking_id % 20) AS package_id
+    matched.package_id
 FROM booking b
+CROSS JOIN LATERAL (
+    SELECT p.package_id
+    FROM package p
+    WHERE p.days::TEXT = (b.total_days::TEXT || ' DAYS')
+    ORDER BY p.package_id
+    OFFSET ((b.booking_id - 1) % (
+        SELECT COUNT(*) FROM package p2
+        WHERE p2.days::TEXT = (b.total_days::TEXT || ' DAYS')
+    ))
+    LIMIT 1
+) matched
 WHERE b.tour_type = 'PACKAGE';
 
 -- =========================================================
@@ -441,12 +580,12 @@ SELECT
     'ADVANCE',
     ROUND((b.quoted_price * 0.30)::NUMERIC, 2),
     (ARRAY['BANK_TRANSFER', 'CASH', 'BANK_TRANSFER'])[1 + (b.booking_id % 3)]::payment_method_type,
-    b.booking_date + 2,
+    b.confirmed_at::DATE,
     1 + (b.booking_id % 10), -- Recorded by one of the 10 Admin users
     'APPROVED',
-    'https://payments.ceylontours.com/slips/deposit-' || b.booking_id || '.pdf',
-    'Initial 30% advance booking deposit received and verified via swift/gateway.',
-    (b.booking_date + 2)::TIMESTAMPTZ + interval '10 hours'
+    NULL,
+    'Sample advance payment of 30% recorded after booking confirmation; demo data only.',
+    b.confirmed_at + interval '1 hour'
 FROM booking b
 WHERE b.booking_status IN ('CONFIRMED', 'TOUR_STARTED', 'COMPLETED', 'CLOSED');
 
@@ -463,8 +602,8 @@ SELECT
     b.start_date,
     1 + ((b.booking_id + 3) % 10),
     'APPROVED',
-    CASE WHEN (b.booking_id % 3) != 1 THEN 'https://payments.ceylontours.com/slips/settlement-' || b.booking_id || '.pdf' ELSE NULL END,
-    'Final settlement balance paid in full upon arrival / start of vehicle dispatch.',
+    NULL,
+    'Sample final settlement recorded at tour commencement; demo data only.',
     b.start_date::TIMESTAMPTZ + interval '9 hours'
 FROM booking b
 WHERE b.booking_status IN ('TOUR_STARTED', 'COMPLETED', 'CLOSED');
@@ -482,14 +621,14 @@ SELECT
     NULL,
     NULL,
     'PENDING',
-    'https://payments.ceylontours.com/slips/pending-transfer-' || b.booking_id || '.pdf',
-    'Customer submitted bank payment slip online; waiting for operational admin verification.',
+    NULL,
+    'Sample bank-transfer payment awaiting admin verification; no real slip is attached.',
     b.booking_date::TIMESTAMPTZ + interval '14 hours'
 FROM booking b
 WHERE b.booking_status = 'ACCEPTED';
 
 -- =========================================================
--- 12. REVIEWS & REVIEW IMAGES (~1,000 Verified Experiences)
+-- 12. REVIEWS (synthetic sample feedback; not verified customer testimonials)
 -- =========================================================
 INSERT INTO review (user_id, booking_id, rating, driver_name, title, feedback, created_at)
 SELECT 
@@ -502,28 +641,21 @@ SELECT
         WHEN b.booking_id % 4 = 0 THEN 4
         ELSE 5 
     END AS rating,
-    (ARRAY['Sunil Perera', 'Pradeep Kumara', 'Chaminda Silva', 'Dhammika Bandara', 'Nuwan Jayasinghe', 'Kasun Fernando', 'Rohan Wijesinghe', 'Anura Senanayake'])[1 + (b.booking_id % 8)] AS driver_name,
-    (ARRAY['Unforgettable 2-week journey!', 'Exceptional driver and clean vehicle', 'Magical Sri Lanka experience', 'Breathtaking sights & safe driving', 'Good tour, slightly packed itinerary', 'Paradise on earth!'])[1 + (b.booking_id % 6)] AS title,
+    (ARRAY['Demo Driver 01', 'Demo Driver 02', 'Demo Driver 03', 'Demo Driver 04', 'Demo Driver 05', 'Demo Driver 06', 'Demo Driver 07', 'Demo Driver 08'])[1 + (b.booking_id % 8)] AS driver_name,
+    (ARRAY['Enjoyable Sri Lanka trip', 'Comfortable vehicle and helpful driver', 'Good communication throughout the trip', 'Scenic journey and punctual service', 'Pleasant travel experience', 'Would recommend the transport service'])[1 + (b.booking_id % 6)] AS title,
     (ARRAY[
-        'Our driver was remarkably professional, knowledgeable, and always punctual. The KDH van was spotless every single morning.',
-        'From Sigiriya to the southern beaches, everything ran without a hitch. The safari in Yala was the highlight of our vacation!',
-        'The scenery in the hill country took our breath away. Clean vehicle, great air conditioning, and top-tier hospitality.',
-        'Felt completely secure throughout our family vacation. Driver was excellent with our children and gave great local fruit tasting tips.',
-        'Very reliable agency for foreign visitors. Punctual airport pickup at CMB and smooth coordination throughout.'
+        'The driver was punctual and the vehicle was clean. Communication before pickup was clear.',
+        'The journey was comfortable and the driver was helpful with route and stop information.',
+        'The vehicle was suitable for our group and the trip was organised well.',
+        'Pickup arrangements were smooth and the driver maintained a professional manner.',
+        'We enjoyed the journey and appreciated the clear communication from the booking team.'
     ])[1 + (b.booking_id % 5)] AS feedback,
     b.completed_at + interval '2 days'
 FROM booking b
 WHERE b.booking_status IN ('COMPLETED', 'CLOSED')
   AND b.booking_id % 2 = 0; -- ~50% review completion rate
 
--- Review photographs
-INSERT INTO review_image (review_id, image_url)
-SELECT 
-    r.review_id,
-    'https://images.unsplash.com/reviews/user-upload-' || r.review_id || '-shot' || img_idx || '.jpg'
-FROM review r
-CROSS JOIN generate_series(1, 2) AS s(img_idx)
-WHERE r.rating >= 4 AND r.review_id % 2 = 0;
+-- Review images are intentionally not seeded. Add a row only after a real uploaded image URL exists.
 
 -- =========================================================
 -- 13. SUPPORT, CONTACT INQUIRIES & REPLIES (800 Inquiries)
@@ -533,8 +665,15 @@ SELECT
     u.name,
     u.email,
     u.contact_number,
-    (ARRAY['Custom 14-day itinerary inquiry', 'Luggage capacity for 4 adults in Sedan', 'Child car seat availability', 'Surfboard carriage on KDH van', 'Airport pickup at midnight timing', 'Yala safari private jeep booking'])[1 + (i % 6)],
-    'Hello, we are traveling from ' || u.country || ' and would like to confirm vehicle availability, pricing, and English-speaking chauffeur assignment.',
+    (ARRAY['Availability of a vehicle for four passengers', 'Luggage capacity for a family booking', 'Child seat availability', 'Tourist van availability for a group', 'Airport pickup arrangement', 'Availability of a wildlife safari package'])[1 + (i % 6)],
+    CASE (i % 6)
+        WHEN 0 THEN 'Hello, we are travelling from ' || u.country || ' and would like to check vehicle availability and the daily rate for four passengers.'
+        WHEN 1 THEN 'Hello, we are travelling from ' || u.country || ' and would like to confirm the luggage capacity for our family and selected vehicle.'
+        WHEN 2 THEN 'Hello, we are travelling from ' || u.country || ' and would like to ask whether a child seat can be arranged for our booking.'
+        WHEN 3 THEN 'Hello, we are travelling from ' || u.country || ' and need a suitable air-conditioned van for our group. Please share the available options.'
+        WHEN 4 THEN 'Hello, we are travelling from ' || u.country || ' and would like to arrange an airport pickup. Please confirm the pickup process and estimated cost.'
+        ELSE 'Hello, we are travelling from ' || u.country || ' and would like information about the available wildlife safari packages.'
+    END,
     TRUE,
     'replied'::inquiry_status_type,
     u.created_at + interval '2 hours'
@@ -546,7 +685,7 @@ SELECT
     ci.inquiry_id,
     'admin'::sender_role_type,
     'Reservation Desk Specialist',
-    'Ayubowan ' || ci.sender_name || ', thank you for writing to us. Yes, all our vehicles are insured for foreign tourists and equipped with AC and child seats upon request. We have reserved the quote for you.',
+    'Ayubowan ' || ci.sender_name || ', thank you for contacting us. Our team will check the relevant vehicle or package details and confirm availability, inclusions and pricing before your booking is finalised.',
     ci.submitted_at + interval '1 hour 45 minutes'
 FROM contact_inquiry ci;
 
