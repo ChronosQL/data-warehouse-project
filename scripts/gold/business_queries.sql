@@ -46,8 +46,8 @@ WITH seasonal_performance AS (
 SELECT 
     tourism_season                                AS "Tourism Season",
     total_bookings                                AS "Confirmed Bookings",
-    TO_CHAR(total_revenue, '$999,999,999.00')     AS "Total Revenue",
-    TO_CHAR(average_booking_value, '$999,999.00') AS "Avg Booking Value",
+    TO_CHAR(total_revenue, 'FM"LKR "999,999,999,990.00')     AS "Total Revenue (LKR)",
+    TO_CHAR(average_booking_value, 'FM"LKR "999,999,990.00') AS "Avg Booking Value (LKR)",
     total_tourists_hosted                         AS "Total Tourists Hosted"
 FROM seasonal_performance
 ORDER BY total_revenue DESC;
@@ -84,8 +84,8 @@ mom_calculation AS (
 SELECT 
     year || ' ' || month_name                     AS "Billing Month",
     total_bookings                                AS "Bookings Count",
-    TO_CHAR(monthly_revenue, '$999,999,999.00')   AS "Monthly Revenue",
-    TO_CHAR(prior_month_revenue, '$999,999,999.00') AS "Prior Month Revenue",
+    TO_CHAR(monthly_revenue, 'FM"LKR "999,999,999,990.00')   AS "Monthly Revenue (LKR)",
+    TO_CHAR(prior_month_revenue, 'FM"LKR "999,999,999,990.00') AS "Prior Month Revenue (LKR)",
     COALESCE(
         ROUND(((monthly_revenue - prior_month_revenue) / NULLIF(prior_month_revenue, 0)) * 100.0, 2), 
         0.00
@@ -112,11 +112,11 @@ WITH daily_revenue AS (
 )
 SELECT 
     calendar_date                                 AS "Date",
-    TO_CHAR(daily_revenue, '$999,999.00')         AS "Daily Revenue",
+    TO_CHAR(daily_revenue, 'FM"LKR "999,999,990.00')         AS "Daily Revenue (LKR)",
     TO_CHAR(
         SUM(daily_revenue) OVER (PARTITION BY year ORDER BY calendar_date), 
-        '$999,999,999.00'
-    )                                             AS "YTD Cumulative Revenue"
+        'FM"LKR "999,999,999,990.00'
+    )                                             AS "YTD Cumulative Revenue (LKR)"
 FROM daily_revenue
 ORDER BY calendar_date DESC
 LIMIT 30;
@@ -144,9 +144,9 @@ WITH unpaid_balances AS (
 SELECT 
     customer_tier                                     AS "Customer Tier",
     unpaid_bookings_count                             AS "Unpaid Bookings",
-    TO_CHAR(total_quoted_amount, '$999,999,999.00')    AS "Total Quoted Value",
-    TO_CHAR(total_collected_amount, '$999,999,999.00') AS "Total Collected",
-    TO_CHAR(total_outstanding_debt, '$999,999,999.00') AS "Pending Receivables"
+    TO_CHAR(total_quoted_amount, 'FM"LKR "999,999,999,990.00')    AS "Total Quoted Value (LKR)",
+    TO_CHAR(total_collected_amount, 'FM"LKR "999,999,999,990.00') AS "Total Collected (LKR)",
+    TO_CHAR(total_outstanding_debt, 'FM"LKR "999,999,999,990.00') AS "Pending Receivables (LKR)"
 FROM unpaid_balances
 ORDER BY total_outstanding_debt DESC;
 
@@ -164,8 +164,8 @@ ORDER BY total_outstanding_debt DESC;
 SELECT 
     customer_tier                                 AS "Customer Segment",
     COUNT(customer_key)                           AS "Traveler Count",
-    TO_CHAR(SUM(total_spend), '$999,999,999.00')  AS "Total Segment Revenue",
-    TO_CHAR(AVG(total_spend), '$999,999.00')      AS "Avg Spend Per Traveler",
+    TO_CHAR(SUM(total_spend), 'FM"LKR "999,999,999,990.00')  AS "Total Segment Revenue (LKR)",
+    TO_CHAR(AVG(total_spend), 'FM"LKR "999,999,990.00')      AS "Avg Spend Per Traveler (LKR)",
     ROUND(AVG(total_bookings), 1)                 AS "Avg Bookings Per Traveler"
 FROM gold.dim_customers
 GROUP BY customer_tier
@@ -182,8 +182,8 @@ SELECT
     COALESCE(c.country, 'Unknown / Not Stated')    AS "Origin Country",
     COUNT(DISTINCT c.customer_key)                AS "Total Travelers",
     COUNT(b.booking_id)                           AS "Total Tours Booked",
-    TO_CHAR(SUM(b.total_price), '$999,999,999.00') AS "Total Inbound Revenue",
-    TO_CHAR(AVG(b.total_price), '$999,999.00')    AS "Avg Tour Value"
+    TO_CHAR(SUM(b.total_price), 'FM"LKR "999,999,999,990.00') AS "Total Inbound Revenue (LKR)",
+    TO_CHAR(AVG(b.total_price), 'FM"LKR "999,999,990.00')    AS "Avg Tour Value (LKR)"
 FROM gold.fact_bookings b
 JOIN gold.dim_customers c ON c.customer_key = b.customer_key
 WHERE b.is_confirmed = TRUE
@@ -214,7 +214,7 @@ SELECT
     loyalty_category                              AS "Loyalty Bracket",
     COUNT(customer_key)                           AS "Traveler Count",
     ROUND((COUNT(customer_key) * 100.0) / SUM(COUNT(customer_key)) OVER (), 2) || '%' AS "Share of Traveler Base",
-    TO_CHAR(SUM(total_spend), '$999,999,999.00')  AS "Total Revenue Generated"
+    TO_CHAR(SUM(total_spend), 'FM"LKR "999,999,999,990.00')  AS "Total Revenue Generated (LKR)"
 FROM customer_frequency
 GROUP BY loyalty_category
 ORDER BY COUNT(customer_key) DESC;
@@ -232,7 +232,7 @@ SELECT
     contact_number                                AS "Phone Number",
     country                                       AS "Country",
     customer_tier                                 AS "Tier",
-    TO_CHAR(total_spend, '$999,999.00')           AS "Lifetime Spend",
+    TO_CHAR(total_spend, 'FM"LKR "999,999,990.00')           AS "Lifetime Spend (LKR)",
     last_booking_date                             AS "Last Trip Date",
     CURRENT_DATE - last_booking_date              AS "Days Since Last Tour"
 FROM gold.dim_customers
@@ -257,11 +257,11 @@ SELECT
     v.comfort_level                               AS "Comfort Rating",
     COUNT(b.booking_id)                           AS "Total Trips Dispatched",
     SUM(b.total_days)                             AS "Total Operational Days",
-    TO_CHAR(SUM(b.total_price), '$999,999,999.00') AS "Total Fleet Revenue",
+    TO_CHAR(SUM(b.total_price), 'FM"LKR "999,999,999,990.00') AS "Total Fleet Revenue (LKR)",
     TO_CHAR(
         ROUND(SUM(b.total_price) / NULLIF(SUM(b.total_days), 0), 2), 
-        '$999,999.00'
-    )                                             AS "Daily Revenue Yield"
+        'FM"LKR "999,999,990.00'
+    )                                             AS "Daily Revenue Yield (LKR)"
 FROM gold.fact_bookings b
 JOIN gold.dim_vehicles v ON v.vehicle_key = b.vehicle_key
 WHERE b.is_confirmed = TRUE
@@ -352,7 +352,7 @@ SELECT
     trip_duration_bracket                         AS "Trip Length",
     category_name                                 AS "Vehicle Category",
     COUNT(*)                                      AS "Bookings Chosen",
-    TO_CHAR(AVG(total_price), '$999,999.00')      AS "Average Tour Revenue"
+    TO_CHAR(AVG(total_price), 'FM"LKR "999,999,990.00')      AS "Average Tour Revenue (LKR)"
 FROM trip_durations
 GROUP BY trip_duration_bracket, category_name
 ORDER BY trip_duration_bracket, COUNT(*) DESC;
@@ -375,7 +375,7 @@ SELECT
     d.latitude                                    AS "Latitude",
     d.longitude                                   AS "Longitude",
     COUNT(b.booking_id)                           AS "Bookings Routed Here",
-    TO_CHAR(SUM(b.total_price), '$999,999,999.00') AS "Linked Tour Revenue"
+    TO_CHAR(SUM(b.total_price), 'FM"LKR "999,999,999,990.00') AS "Linked Tour Revenue (LKR)"
 FROM gold.dim_destinations d
 JOIN silver.package_place pp ON pp.place_id = d.place_id
 JOIN gold.fact_bookings b ON b.package_key = pp.package_id
@@ -439,8 +439,8 @@ SELECT
     COALESCE(start_location, 'Unspecified Start') AS "Origin / Pickup Point",
     COALESCE(end_location, 'Unspecified End')     AS "Final Destination",
     COUNT(booking_id)                             AS "Trip Volume",
-    TO_CHAR(SUM(total_price), '$999,999,999.00')  AS "Corridor Revenue",
-    TO_CHAR(AVG(total_price), '$999,999.00')      AS "Average Trip Fare"
+    TO_CHAR(SUM(total_price), 'FM"LKR "999,999,999,990.00')  AS "Corridor Revenue (LKR)",
+    TO_CHAR(AVG(total_price), 'FM"LKR "999,999,990.00')      AS "Average Trip Fare (LKR)"
 FROM gold.fact_bookings
 WHERE is_confirmed = TRUE
 GROUP BY start_location, end_location

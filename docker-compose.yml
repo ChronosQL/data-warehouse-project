@@ -72,13 +72,14 @@ services:
         condition: service_healthy
 
   metabase_init:
-    image: curlimages/curl:latest
+    image: badouralix/curl-jq:latest
     container_name: dw_metabase_init
     restart: "no"
     depends_on:
       - metabase
     volumes:
       - ./scripts/metabase_init.sh:/metabase_init.sh:ro
+      - ./scripts/create_dashboards.sh:/create_dashboards.sh:ro
     entrypoint: ["/bin/sh", "/metabase_init.sh"]
 
 volumes:

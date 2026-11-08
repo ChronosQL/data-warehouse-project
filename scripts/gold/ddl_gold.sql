@@ -56,8 +56,8 @@ SELECT
     COALESCE(b_stats.total_bookings, 0) AS total_bookings,
     COALESCE(b_stats.total_spend, 0.00) AS total_spend,
     CASE 
-        WHEN COALESCE(b_stats.total_spend, 0) >= 3000 THEN 'VIP Traveler'
-        WHEN COALESCE(b_stats.total_spend, 0) >= 1000 THEN 'Regular Traveler'
+        WHEN COALESCE(b_stats.total_bookings, 0) >= 5 OR COALESCE(b_stats.total_spend, 0) >= 1250000.00 THEN 'VIP Traveler'
+        WHEN COALESCE(b_stats.total_bookings, 0) >= 2 OR COALESCE(b_stats.total_spend, 0) >= 400000.00 THEN 'Regular Traveler'
         WHEN COALESCE(b_stats.total_bookings, 0) > 0  THEN 'Standard Traveler'
         ELSE 'Prospect'
     END AS customer_tier,
